@@ -1,0 +1,608 @@
+{
+  "questions_usages": {
+    "PC2_FA1_Level_2": {
+      "usageKey": "PC2_FA1_Level_2",
+      "workplaces": [
+        "KVSPC-3",
+        "KVSPC-4",
+        "KVSPC-5",
+        "KVSPC-17"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-104": {
+          "nextRotationDate": "2026-04-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-103": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-102": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-101": {
+          "nextRotationDate": "2026-04-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC2_FA2_Level_2": {
+      "usageKey": "PC2_FA2_Level_2",
+      "workplaces": [
+        "KVSPC-7",
+        "KVSPC-18"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC2_FA3_Level_2": {
+      "usageKey": "PC2_FA3_Level_2",
+      "workplaces": [
+        "KVSPC-10"
+      ],
+      "currentWorkplaceIndex": 0,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC2_FA4_Level_2": {
+      "usageKey": "PC2_FA4_Level_2",
+      "workplaces": [
+        "KVSPC-12"
+      ],
+      "currentWorkplaceIndex": 0,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC2_FA5_Level_2": {
+      "usageKey": "PC2_FA5_Level_2",
+      "workplaces": [
+        "KVSPC-20"
+      ],
+      "currentWorkplaceIndex": 0,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC2_FA6_Level_2": {
+      "usageKey": "PC2_FA6_Level_2",
+      "workplaces": [
+        "KVSPC-22",
+        "KVSPC-23",
+        "KVSPC-24",
+        "KVSPC-25"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC2_FA7_Level_2": {
+      "usageKey": "PC2_FA7_Level_2",
+      "workplaces": [
+        "KVSPC-27",
+        "KVSPC-28"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC2_FA8_Level_2": {
+      "usageKey": "PC2_FA8_Level_2",
+      "workplaces": [
+        "KVSPC-30"
+      ],
+      "currentWorkplaceIndex": 0,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC4_FA1_Level_2": {
+      "usageKey": "PC4_FA1_Level_2",
+      "workplaces": [
+        "KVSPC-32",
+        "KVSPC-33",
+        "KVSPC-34"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-138": {
+          "nextRotationDate": "2026-04-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-135": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC4_FA2_Level_2": {
+      "usageKey": "PC4_FA2_Level_2",
+      "workplaces": [
+        "KVSPC-36"
+      ],
+      "currentWorkplaceIndex": 0,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-138": {
+          "nextRotationDate": "2026-04-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-135": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC4_FA3_Level_2": {
+      "usageKey": "PC4_FA3_Level_2",
+      "workplaces": [
+        "KVSPC-38",
+        "KVSPC-39",
+        "KVSPC-40",
+        "KVSPC-41"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-138": {
+          "nextRotationDate": "2026-04-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-135": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC4_FA4_Level_2": {
+      "usageKey": "PC4_FA4_Level_2",
+      "workplaces": [
+        "KVSPC-43",
+        "KVSPC-44",
+        "KVSPC-45"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-138": {
+          "nextRotationDate": "2026-04-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-135": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA10_Level_2": {
+      "usageKey": "PC9_FA10_Level_2",
+      "workplaces": [
+        "KVSPC-90",
+        "KVSPC-91",
+        "KVSPC-92"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA1_Level_2": {
+      "usageKey": "PC9_FA1_Level_2",
+      "workplaces": [
+        "KVSPC-47",
+        "KVSPC-48",
+        "KVSPC-49",
+        "KVSPC-50"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA2_Level_2": {
+      "usageKey": "PC9_FA2_Level_2",
+      "workplaces": [
+        "KVSPC-52",
+        "KVSPC-53",
+        "KVSPC-54"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA3_Level_2": {
+      "usageKey": "PC9_FA3_Level_2",
+      "workplaces": [
+        "KVSPC-56",
+        "KVSPC-57",
+        "KVSPC-58",
+        "KVSPC-59",
+        "KVSPC-60"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA4_Level_2": {
+      "usageKey": "PC9_FA4_Level_2",
+      "workplaces": [
+        "KVSPC-62",
+        "KVSPC-63",
+        "KVSPC-64"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA5_Level_2": {
+      "usageKey": "PC9_FA5_Level_2",
+      "workplaces": [
+        "KVSPC-66",
+        "KVSPC-67",
+        "KVSPC-68",
+        "KVSPC-69"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA6_Level_2": {
+      "usageKey": "PC9_FA6_Level_2",
+      "workplaces": [
+        "KVSPC-71",
+        "KVSPC-72",
+        "KVSPC-73",
+        "KVSPC-74"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA7_Level_2": {
+      "usageKey": "PC9_FA7_Level_2",
+      "workplaces": [
+        "KVSPC-76",
+        "KVSPC-77",
+        "KVSPC-78",
+        "KVSPC-79",
+        "KVSPC-80"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA8_Level_2": {
+      "usageKey": "PC9_FA8_Level_2",
+      "workplaces": [
+        "KVSPC-82",
+        "KVSPC-83",
+        "KVSPC-84",
+        "KVSPC-85"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC9_FA9_Level_2": {
+      "usageKey": "PC9_FA9_Level_2",
+      "workplaces": [
+        "KVSPC-87",
+        "KVSPC-88"
+      ],
+      "currentWorkplaceIndex": 1,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton"
+      ],
+      "currentAuditorIndex": 1,
+      "specialQuestions": {
+        "KVSAQ-141": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-139": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-129": {
+          "nextRotationDate": "2025-10-02",
+          "workplaceIndex": 0
+        }
+      }
+    }
+  }
+}

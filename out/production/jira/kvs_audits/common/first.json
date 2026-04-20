@@ -1,0 +1,55 @@
+{
+  "questions_usages": {
+    "PC2_FA1_Level_2": {
+      "usageKey": "PC2_FA1_Level_2",
+      "workplaces": [
+        "KVSPC-3",
+        "KVSPC-4",
+        "KVSPC-5",
+        "KVSPC-17"
+      ],
+      "currentWorkplaceIndex": 0,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton",
+        "jira.bot"
+      ],
+      "currentAuditorIndex": 0,
+      "specialQuestions": {
+        "KVSAQ-104": {
+          "nextRotationDate": "2026-03-24",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-103": {
+          "nextRotationDate": "2025-09-24",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-102": {
+          "nextRotationDate": "2025-09-24",
+          "workplaceIndex": 0
+        },
+        "KVSAQ-101": {
+          "nextRotationDate": "2026-03-24",
+          "workplaceIndex": 0
+        }
+      }
+    },
+    "PC2_FA2_Level_2": {
+      "usageKey": "PC2_FA2_Level_2",
+      "workplaces": [
+        "KVSPC-7",
+        "KVSPC-18"
+      ],
+      "currentWorkplaceIndex": 0,
+      "auditors": [
+        "chabrecek.admin.local",
+        "Chabrecek.Admin",
+        "chabrecek.anton",
+        "jira.bot"
+      ],
+      "currentAuditorIndex": 0,
+      "specialQuestions": {}
+    }
+  }
+}

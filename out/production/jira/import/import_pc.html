@@ -1,0 +1,569 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:x="urn:schemas-microsoft-com:office:excel"
+      xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <title>Scheidt &amp; Bachmann TEST JIRA</title>
+        <style type="text/css">
+         table {
+             mso-displayed-decimal-separator:"\.";
+             mso-displayed-thousand-separator:"\,";
+         }
+         body
+         {
+             margin: 0px;
+             font-size: 12px;
+             font-family: Arial, sans-serif;
+             color:black;
+         }
+
+        </style>
+        <META HTTP-EQUIV="Content-Type" Content="application/vnd.ms-excel; charset=UTF-8">
+        <!-- JRA-7598 - ensure fields (e.g. description) occupy only one cell - even fields containing newlines. -->
+        <!--
+             Vertical align all cells to the top, in order to align all issue rows of issuetable to the top,
+             since Excel does not use or save the css files it is hardcoded here.
+           -->
+        <style>
+         @page
+         {
+             mso-page-orientation:landscape;
+             margin:.25in .25in .5in .25in;
+             mso-header-margin:.5in;
+             mso-footer-margin:.25in;
+             mso-footer-data:"&R&P of &N";
+             mso-horizontal-page-align:center;
+             mso-vertical-page-align:center;
+         }
+
+         td.issuekey,
+         td.issuetype,
+         td.status {
+             mso-style-parent: "";
+             mso-number-format: \@;
+             text-align: left;
+         }
+         br
+         {
+             mso-data-placement:same-cell;
+         }
+
+         td
+         {
+             vertical-align: top;
+         }
+        </style>
+
+        <!--[if gte mso 9]><xml>
+            <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+            <x:ExcelWorksheet>
+            <x:Name>general_report</x:Name>
+            <x:WorksheetOptions>
+            <x:Print>
+            <x:ValidPrinterInfo/>
+            </x:Print>
+            </x:WorksheetOptions>
+            </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+            </xml><![endif]-->
+    </head>
+    <body>
+
+        <table border="1">
+            <tr bgcolor="#ffffff" height="29">
+                <td colspan="12">
+                    <img src="https://10.221.129.120/jira-logo-scaled.png" width="34" height="29" border="0" alt="Scheidt &amp; Bachmann TEST JIRA">
+                </td>
+            </tr>
+            <tr>
+                <td colspan="12">
+                    <a href="https://10.221.129.120/issues/?jql=project+%3D+KVSPC+AND+issuetype+%3D+%22Profit+Center%22" data-testid="filterNameHref">Scheidt &amp; Bachmann TEST JIRA</a>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="12">
+                    Displaying <strong>17</strong> issues at <strong>04.08.2025 10:05</strong>.
+                </td>
+            </tr>
+        </table>
+
+        
+
+
+                            <issuetable-web-component data-content="issues">
+                <table id="issuetable"  border="1" cellpadding="3" cellspacing="1" width="100%">
+                        <thead>
+        <tr class="rowHeader">
+            
+                                                            <th scope="col" class="colHeaderLink headerrow-issuetype" data-id="issuetype">
+                            Issue Type
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_16301" data-id="customfield_16301">
+                            Profit Center Key
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-summary" data-id="summary">
+                            Summary
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-reporter" data-id="reporter">
+                            Reporter
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-updated" data-id="updated">
+                            Updated
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-duedate" data-id="duedate">
+                            Due Date
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-timespent" data-id="timespent">
+                            Time Spent
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-assignee" data-id="assignee">
+                            Assignee
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_15909" data-id="customfield_15909">
+                            Functional Area
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_16302" data-id="customfield_16302">
+                            Functional Area Key
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_15901" data-id="customfield_15901">
+                            Profit Center
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_16801" data-id="customfield_16801">
+                            KVS PC Sub-Area
+                                                    </th>
+                                                                    </tr>
+    </thead>
+    <tbody>
+                    
+
+                <tr id="issuerow960311" rel="960311" data-issuekey="KVSPC-358" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                PCVersand
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 15.05.2025 13:50 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959879" rel="959879" data-issuekey="KVSPC-191" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    SKRZ
+</td>
+                                            <td class="summary"><p>
+                SKRZ Rework centre
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:15 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959878" rel="959878" data-issuekey="KVSPC-190" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    SKPS
+</td>
+                                            <td class="summary"><p>
+                SKPS Parking solutions
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:14 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959877" rel="959877" data-issuekey="KVSPC-189" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    SKLPL
+</td>
+                                            <td class="summary"><p>
+                SKLPL PCB production
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:14 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959876" rel="959876" data-issuekey="KVSPC-188" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    SKFM
+</td>
+                                            <td class="summary"><p>
+                SKFM Precision mechanic
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:13 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959875" rel="959875" data-issuekey="KVSPC-187" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    SKFCS
+</td>
+                                            <td class="summary"><p>
+                SKFCS Fare Collection Systems
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:13 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959874" rel="959874" data-issuekey="KVSPC-186" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    SKERS
+</td>
+                                            <td class="summary"><p>
+                SKERS Fuel Retail Solutions Assembly
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:13 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959873" rel="959873" data-issuekey="KVSPC-185" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    SKCABLE
+</td>
+                                            <td class="summary"><p>
+                SKCABLE Cable production
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:12 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959872" rel="959872" data-issuekey="KVSPC-184" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PCWK
+</td>
+                                            <td class="summary"><p>
+                PCWK Wareneingang kaufm.
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:11 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959871" rel="959871" data-issuekey="KVSPC-183" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PCWEQS
+</td>
+                                            <td class="summary"><p>
+                PCWEQS Wareneingang QS
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:11 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959870" rel="959870" data-issuekey="KVSPC-182" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PCLA
+</td>
+                                            <td class="summary"><p>
+                PCLA Lager
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:10 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow959869" rel="959869" data-issuekey="KVSPC-181" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PCKL
+</td>
+                                            <td class="summary"><p>
+                PCKL Kalibrierlabor
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 14.05.2025 09:09 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow923052" rel="923052" data-issuekey="KVSPC-16" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PC9
+</td>
+                                            <td class="summary"><p>
+                PC9 Signalbau
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 15.04.2025 07:25 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow923051" rel="923051" data-issuekey="KVSPC-15" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PC6
+</td>
+                                            <td class="summary"><p>
+                PC6 Leiterplattenfertigung
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 15.04.2025 07:25 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow923050" rel="923050" data-issuekey="KVSPC-14" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PC4
+</td>
+                                            <td class="summary"><p>
+                PC4 Lackierei
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 15.04.2025 07:25 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow923049" rel="923049" data-issuekey="KVSPC-13" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PC3
+</td>
+                                            <td class="summary"><p>
+                PC3 Blechverarbeitung
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 15.04.2025 07:25 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+
+
+                <tr id="issuerow916275" rel="916275" data-issuekey="KVSPC-1" class="issuerow">
+                                            <td class="issuetype">    Profit Center
+</td>
+                                            <td class="customfield_16301">    PC2
+</td>
+                                            <td class="summary"><p>
+                PC2 Mechanische Werkstatt
+    </p>
+</td>
+                                            <td class="reporter">            Chabrecek.Anton
+    </td>
+                                            <td class="updated"> 15.04.2025 07:25 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302"></td>
+                                            <td class="customfield_15901"></td>
+                                            <td class="customfield_16801"></td>
+                    </tr>
+                </tbody>
+    </table>
+    </issuetable-web-component>
+    <div class="end-of-stable-message"></div>
+            <table border="1" >
+<tr>
+    <td bgcolor="#f5f5f5" colspan="12"><font size="1">
+        Generated at Mon Aug 04 10:05:13 CEST 2025 by Chabrecek.Anton using Jira 9.12.19#9120019-sha1:6f17f2c650bd32bf4540e33f841dca8ca6fbe5c5.
+    </font></td>
+</tr>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,2834 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:x="urn:schemas-microsoft-com:office:excel"
+      xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <title>Scheidt &amp; Bachmann TEST JIRA</title>
+        <style type="text/css">
+         table {
+             mso-displayed-decimal-separator:"\.";
+             mso-displayed-thousand-separator:"\,";
+         }
+         body
+         {
+             margin: 0px;
+             font-size: 12px;
+             font-family: Arial, sans-serif;
+             color:black;
+         }
+
+        </style>
+        <META HTTP-EQUIV="Content-Type" Content="application/vnd.ms-excel; charset=UTF-8">
+        <!-- JRA-7598 - ensure fields (e.g. description) occupy only one cell - even fields containing newlines. -->
+        <!--
+             Vertical align all cells to the top, in order to align all issue rows of issuetable to the top,
+             since Excel does not use or save the css files it is hardcoded here.
+           -->
+        <style>
+         @page
+         {
+             mso-page-orientation:landscape;
+             margin:.25in .25in .5in .25in;
+             mso-header-margin:.5in;
+             mso-footer-margin:.25in;
+             mso-footer-data:"&R&P of &N";
+             mso-horizontal-page-align:center;
+             mso-vertical-page-align:center;
+         }
+
+         td.issuekey,
+         td.issuetype,
+         td.status {
+             mso-style-parent: "";
+             mso-number-format: \@;
+             text-align: left;
+         }
+         br
+         {
+             mso-data-placement:same-cell;
+         }
+
+         td
+         {
+             vertical-align: top;
+         }
+        </style>
+
+        <!--[if gte mso 9]><xml>
+            <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+            <x:ExcelWorksheet>
+            <x:Name>general_report</x:Name>
+            <x:WorksheetOptions>
+            <x:Print>
+            <x:ValidPrinterInfo/>
+            </x:Print>
+            </x:WorksheetOptions>
+            </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+            </xml><![endif]-->
+    </head>
+    <body>
+
+        <table border="1">
+            <tr bgcolor="#ffffff" height="29">
+                <td colspan="13">
+                    <img src="https://10.221.129.120/jira-logo-scaled.png" width="34" height="29" border="0" alt="Scheidt &amp; Bachmann TEST JIRA">
+                </td>
+            </tr>
+            <tr>
+                <td colspan="13">
+                    <a href="https://10.221.129.120/issues/?jql=project+%3D+KVSPC+AND+issuetype+%3D+%22Functional+Areas%22" data-testid="filterNameHref">Scheidt &amp; Bachmann TEST JIRA</a>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="13">
+                    Displaying <strong>92</strong> issues at <strong>04.08.2025 10:40</strong>.
+                </td>
+            </tr>
+        </table>
+
+        
+
+
+                            <issuetable-web-component data-content="issues">
+                <table id="issuetable"  border="1" cellpadding="3" cellspacing="1" width="100%">
+                        <thead>
+        <tr class="rowHeader">
+            
+                                                            <th scope="col" class="colHeaderLink headerrow-issuetype" data-id="issuetype">
+                            Issue Type
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_16301" data-id="customfield_16301">
+                            Profit Center Key
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-summary" data-id="summary">
+                            Summary
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-reporter" data-id="reporter">
+                            Reporter
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-updated" data-id="updated">
+                            Updated
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-duedate" data-id="duedate">
+                            Due Date
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-timespent" data-id="timespent">
+                            Time Spent
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-assignee" data-id="assignee">
+                            Assignee
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_15909" data-id="customfield_15909">
+                            Functional Area
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_16302" data-id="customfield_16302">
+                            Functional Area Key
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_15901" data-id="customfield_15901">
+                            Profit Center
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_16801" data-id="customfield_16801">
+                            KVS PC Sub-Area
+                                                    </th>
+                                                
+                                                            <th scope="col" class="colHeaderLink headerrow-customfield_10301" data-id="customfield_10301">
+                            Parent Link
+                                                    </th>
+                                                                    </tr>
+    </thead>
+    <tbody>
+                    
+
+                <tr id="issuerow960707" rel="960707" data-issuekey="KVSPC-371" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Versand.9 Packstelle SIS1,SIS2, SIS ET
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:14 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA9
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960706" rel="960706" data-issuekey="KVSPC-370" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Versand.8 Packstelle PH1, PH2, PH3, SIS Kleinsendungen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:14 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA8
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960705" rel="960705" data-issuekey="KVSPC-369" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Vesand.7 Packstellen KEP, FCS1, FCS2
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:15 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA7
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960704" rel="960704" data-issuekey="KVSPC-368" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Versand.6 Zentrale Verpackung und Zilina Transfer
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:14 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA6
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960703" rel="960703" data-issuekey="KVSPC-367" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Versand.5 Übergabestelle SIS
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:14 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960702" rel="960702" data-issuekey="KVSPC-366" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Versand.4 Lager 687
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:14 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960701" rel="960701" data-issuekey="KVSPC-365" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Versand.3 Lager 689
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:13 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960700" rel="960700" data-issuekey="KVSPC-364" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Versand.2 Lager 489
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:13 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960699" rel="960699" data-issuekey="KVSPC-363" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                Versand.1 Lager 389/589/686
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:13 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-358
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960695" rel="960695" data-issuekey="KVSPC-359" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LA.7 4-OE
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:58 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA7
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-182
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960043" rel="960043" data-issuekey="KVSPC-355" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                PS.6 MONTAGE LINE PS2
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:00 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA6
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-190
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960041" rel="960041" data-issuekey="KVSPC-353" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                PS.5 MONTAGE LINE PS1
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:59 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-190
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960035" rel="960035" data-issuekey="KVSPC-347" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                PS.4 FINAL INSPECTION PS1, PS2
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:59 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-190
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960032" rel="960032" data-issuekey="KVSPC-344" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                PS.3 FINAL INSPECTION
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:59 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-190
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960028" rel="960028" data-issuekey="KVSPC-340" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                PS.2 TPU/BKV ASSEMBLY
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:59 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-190
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960022" rel="960022" data-issuekey="KVSPC-334" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                PS.1 SUB COMPONENTS
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:59 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-190
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960016" rel="960016" data-issuekey="KVSPC-328" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LP.5 Quality inspection
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:58 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-189
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960013" rel="960013" data-issuekey="KVSPC-325" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LP.4 Painting
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:58 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-189
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960009" rel="960009" data-issuekey="KVSPC-321" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LP.3 Pre-preparation of components
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:58 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-189
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow960003" rel="960003" data-issuekey="KVSPC-315" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LP.2 Installation + visual inspection
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:58 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-189
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959998" rel="959998" data-issuekey="KVSPC-310" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LP.1 Assembly + repairs
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:58 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-189
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959994" rel="959994" data-issuekey="KVSPC-306" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FM.3 MECHANICAL WORKSHOP
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:55 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-188
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959992" rel="959992" data-issuekey="KVSPC-304" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FM.2 FM FINAL INSPECTION
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:55 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-188
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959987" rel="959987" data-issuekey="KVSPC-299" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FM.1 FM PRODUCTION
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:55 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-188
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959985" rel="959985" data-issuekey="KVSPC-297" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FC.8 Validator Production
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:55 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA8
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-187
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959983" rel="959983" data-issuekey="KVSPC-295" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FC.7 Validator Final inspection
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:55 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA7
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-187
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959980" rel="959980" data-issuekey="KVSPC-292" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FC.6 Gate Driver inspection
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:55 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA6
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-187
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959974" rel="959974" data-issuekey="KVSPC-286" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FC.5 TVM/Gate Final inspection
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:55 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-187
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959971" rel="959971" data-issuekey="KVSPC-283" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FC.3 Preassembly FCS
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:54 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-187
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959969" rel="959969" data-issuekey="KVSPC-281" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FC.2 Assembly line FCS 
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:54 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-187
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959963" rel="959963" data-issuekey="KVSPC-275" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                FC.1 Subassemblies FCS 
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:54 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-187
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959961" rel="959961" data-issuekey="KVSPC-273" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                ER.3 Final inspection
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:54 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-186
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959957" rel="959957" data-issuekey="KVSPC-269" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                ER.1 Under components- and final assembly
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:54 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-186
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959954" rel="959954" data-issuekey="KVSPC-266" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                CA.2 FINAL INSPECTION
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:53 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-185
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959950" rel="959950" data-issuekey="KVSPC-262" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                CA.1 CABLE PRODUCTION
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:53 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-185
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959947" rel="959947" data-issuekey="KVSPC-259" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                WK.3 Transport
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:07 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-184
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959944" rel="959944" data-issuekey="KVSPC-256" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                WK.2 Wareneingang / Retouren
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:07 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-184
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959938" rel="959938" data-issuekey="KVSPC-250" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                WK.1 Warenannahme
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:07 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-184
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959932" rel="959932" data-issuekey="KVSPC-244" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                WE.1 Wareneingang QS
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:06 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-183
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959921" rel="959921" data-issuekey="KVSPC-233" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LA.6 Zentrallager
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:58 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA6
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-182
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959917" rel="959917" data-issuekey="KVSPC-229" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LA.5 Außenlager
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:57 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-182
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959914" rel="959914" data-issuekey="KVSPC-226" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LA.4 Pufferlager Kleinserienfertigung
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:57 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-182
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959910" rel="959910" data-issuekey="KVSPC-222" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LA.3 Computerlager
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:57 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-182
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959906" rel="959906" data-issuekey="KVSPC-218" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LA.2 AKL
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:56 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-182
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959894" rel="959894" data-issuekey="KVSPC-206" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                LA.1 Signalbaulager
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:56 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-182
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959892" rel="959892" data-issuekey="KVSPC-204" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                KL.1 Kalibrierlabor
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:56 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-181
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959886" rel="959886" data-issuekey="KVSPC-198" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                RZ.2 RZ electric
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:00 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-191
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow959880" rel="959880" data-issuekey="KVSPC-192" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                RZ.1 RZ mechanic
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 11:00 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-191
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944671" rel="944671" data-issuekey="KVSPC-146" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.14 WE PC3 &amp; Endprüfung Auswärtige Bearbeitung 
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:46 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA14
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944670" rel="944670" data-issuekey="KVSPC-145" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.13 QS-Bereich PC3
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:45 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA13
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944669" rel="944669" data-issuekey="KVSPC-144" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.12 MAG Schweißen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:45 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA12
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944668" rel="944668" data-issuekey="KVSPC-143" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.11 Türen Schweißen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:45 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA11
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944667" rel="944667" data-issuekey="KVSPC-142" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.10 Gehäuse Schweißen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:43 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA10
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944666" rel="944666" data-issuekey="KVSPC-141" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.9 Verputzen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:49 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA9
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944665" rel="944665" data-issuekey="KVSPC-140" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.8 Einpressen / Punkten / Richten
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:48 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA8
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944664" rel="944664" data-issuekey="KVSPC-139" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.7 Bolzen Schweißen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:48 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA7
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944663" rel="944663" data-issuekey="KVSPC-138" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.6 WIG Schweißen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:46 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA6
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944662" rel="944662" data-issuekey="KVSPC-137" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.5 Laser Schweißen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:46 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944661" rel="944661" data-issuekey="KVSPC-136" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.4 Stanzen / Gewindeschneiden
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:46 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944660" rel="944660" data-issuekey="KVSPC-135" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.3 Trowalieren
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:46 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944659" rel="944659" data-issuekey="KVSPC-134" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.2 Abkanten (Abkantbänke BG 6980337 inkl. Flächen)
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:46 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944658" rel="944658" data-issuekey="KVSPC-133" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                3.1 Laserschneiden / Entgraten
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:43 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-13
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944653" rel="944653" data-issuekey="KVSPC-128" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                6.9 Endprüfung 3
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.07.2025 11:49 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA9
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-15
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944651" rel="944651" data-issuekey="KVSPC-126" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                6.8 Endprüfung 2
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.07.2025 11:48 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA8
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-15
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944645" rel="944645" data-issuekey="KVSPC-120" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                6.7 Endprüfung 1
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.07.2025 11:48 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA7
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-15
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944641" rel="944641" data-issuekey="KVSPC-116" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                6.5 Maskieren, Demaskieren und Lackieren
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.07.2025 11:48 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-15
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944637" rel="944637" data-issuekey="KVSPC-112" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                6.4 AOI, Sichtprüfen, Nachlöten, Komplettieren und Instandsetzung
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.07.2025 11:48 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-15
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944631" rel="944631" data-issuekey="KVSPC-106" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                6.3 THT-Linie inkl. Materialbewegung
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.07.2025 11:47 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-15
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944625" rel="944625" data-issuekey="KVSPC-100" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                6.2 Bauteilvorbereitung, Vormontage, Pressen, Montieren und Einkapseln
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.07.2025 11:47 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-15
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow944622" rel="944622" data-issuekey="KVSPC-97" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                6.1 SMT-Linie inkl. Materialbewegung
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.07.2025 11:46 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-15
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923125" rel="923125" data-issuekey="KVSPC-89" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.10 Lichtpunkttubus &amp; LED-Modul &amp; Matrix &amp; LED Panel
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:51 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA10
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923122" rel="923122" data-issuekey="KVSPC-86" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.9 HSM10E V1 - Montage &amp; HSM10E - V1 + V2 Prüfplätze
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:53 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA9
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923117" rel="923117" data-issuekey="KVSPC-81" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.8 Gruppen &amp; Lichtprüfstand &amp; Klimatest
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:53 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA8
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923111" rel="923111" data-issuekey="KVSPC-75" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.7 Schaltanlagen/BSH
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:53 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA7
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923106" rel="923106" data-issuekey="KVSPC-70" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.6 ZSB Innenanlage
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:52 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA6
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923101" rel="923101" data-issuekey="KVSPC-65" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.5 Diagnose PC &amp; Reparaturzentrum &amp; Digitrans &amp; Pick by Light
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:52 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923097" rel="923097" data-issuekey="KVSPC-61" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.4 Außenstoffe &amp; Kabelfertigung &amp; Montage Gruppen 
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:52 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    B
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923091" rel="923091" data-issuekey="KVSPC-55" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.3 Achsensor &amp; Beipack &amp; Drehschieber &amp;  Diverses &amp; Handschalttaste &amp; Neuer Antrieb
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:51 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923087" rel="923087" data-issuekey="KVSPC-51" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.2 Lichtzeichen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:51 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923082" rel="923082" data-issuekey="KVSPC-46" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                9.1 HSM 10E V2 &amp; Alter Antrieb  &amp; Lichtzeichen &amp; Kabelschränke
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:51 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-16
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923078" rel="923078" data-issuekey="KVSPC-42" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                4.4 Koloristik / Mischen von Farbe
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:49 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-14
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923073" rel="923073" data-issuekey="KVSPC-37" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                4.3 Ansetzen von Farbe, Grundieren, Lackieren und Trocknen
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:49 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-14
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923071" rel="923071" data-issuekey="KVSPC-35" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                4.2 Auswaschen inkl. Materialbewegung
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:49 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-14
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923067" rel="923067" data-issuekey="KVSPC-31" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                4.1 Maskieren, Qualitätsprüfung, Demaskieren und Verpacken
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 11.07.2025 10:40 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-14
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923065" rel="923065" data-issuekey="KVSPC-29" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                2.8 QS-Kabine
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:42 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA8
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-1
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923062" rel="923062" data-issuekey="KVSPC-26" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                2.7 Rohmateriallager
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:42 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA7
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-1
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923057" rel="923057" data-issuekey="KVSPC-21" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                2.6 Werkzeugmacherei / Schleiferei
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:42 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA6
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-1
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow923055" rel="923055" data-issuekey="KVSPC-19" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                2.5 Entgraten
+    </p>
+</td>
+                                            <td class="reporter">            Hamers.Jonas
+    </td>
+                                            <td class="updated"> 16.06.2025 10:42 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA5
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-1
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow916325" rel="916325" data-issuekey="KVSPC-11" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                2.4 Bohren
+    </p>
+</td>
+                                            <td class="reporter">            Chabrecek.Anton
+    </td>
+                                            <td class="updated"> 16.06.2025 10:42 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA4
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-1
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow916322" rel="916322" data-issuekey="KVSPC-8" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                2.3 Heckert
+    </p>
+</td>
+                                            <td class="reporter">            Chabrecek.Anton
+    </td>
+                                            <td class="updated"> 16.06.2025 10:41 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA3
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-1
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow916320" rel="916320" data-issuekey="KVSPC-6" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                2.2 Fräsen
+    </p>
+</td>
+                                            <td class="reporter">            Chabrecek.Anton
+    </td>
+                                            <td class="updated"> 16.06.2025 10:41 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA2
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-1
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+
+
+                <tr id="issuerow916276" rel="916276" data-issuekey="KVSPC-2" class="issuerow">
+                                            <td class="issuetype">    Functional Areas
+</td>
+                                            <td class="customfield_16301"></td>
+                                            <td class="summary"><p>
+                2.1 Drehen
+    </p>
+</td>
+                                            <td class="reporter">            Chabrecek.Anton
+    </td>
+                                            <td class="updated"> 16.06.2025 10:39 </td>
+                                            <td class="duedate">    &nbsp;
+</td>
+                                            <td class="timespent"></td>
+                                            <td class="assignee">    <em>Unassigned</em>
+</td>
+                                            <td class="customfield_15909"></td>
+                                            <td class="customfield_16302">    FA1
+</td>
+                                            <td class="customfield_15901">
+                                KVSPC-1
+    </td>
+                                            <td class="customfield_16801">    A
+</td>
+                                            <td class="customfield_10301">
+</td>
+                    </tr>
+                </tbody>
+    </table>
+    </issuetable-web-component>
+    <div class="end-of-stable-message"></div>
+            <table border="1" >
+<tr>
+    <td bgcolor="#f5f5f5" colspan="13"><font size="1">
+        Generated at Mon Aug 04 10:40:38 CEST 2025 by Chabrecek.Anton using Jira 9.12.19#9120019-sha1:6f17f2c650bd32bf4540e33f841dca8ca6fbe5c5.
+    </font></td>
+</tr>
+</table>
+
+</body>
+</html>
