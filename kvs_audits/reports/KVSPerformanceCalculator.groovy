@@ -3,6 +3,7 @@ package kvs_audits.reports
 import com.atlassian.jira.issue.Issue
 import kvs_audits.KVSLogger
 import kvs_audits.issueType.Audit
+import kvs_audits.issueType.Question
 
 import java.sql.Timestamp
 import java.time.LocalDate
@@ -62,6 +63,7 @@ class KVSPerformanceCalculator {
 
     protected MyBaseUtil myBaseUtil = new MyBaseUtil();
     protected KVSLogger logger = new KVSLogger()
+
     /**
      * Calculates overall and per-category KVS performance metrics.
      *
@@ -73,9 +75,9 @@ class KVSPerformanceCalculator {
      *         - evaluatedWeeks        : Sorted List<Integer> of weeks evaluated
      *         - lastUpdated           : String date of calculation (YYYY-MM-DD)
      */
-    Map<String,Object> calculateKPI(List<Issue> questions, LocalDate currentDate) {
-        Map<Integer,Map<String,Double>> weekResults = [:]
-        Map<String,Map<String,Double>> categoryResults = [:]
+    Map<String, Object> calculateKPI(List<Issue> questions, LocalDate currentDate) {
+        Map<Integer, Map<String, Double>> weekResults = [:]
+        Map<String, Map<String, Double>> categoryResults = [:]
 
         questions.each { Issue question ->
             LocalDate auditDate = getAuditDate(question)
@@ -89,19 +91,19 @@ class KVSPerformanceCalculator {
             double Gm = getWeightGm(question)
             double Gz = getWeightGz(category)
 
-            int iO      = isIO(question) ? 1 : 0
+            int iO = isIO(question) ? 1 : 0
             int behoben = isBehoben(question) ? 1 : 0
-            int iOnM    = isFixedLater(question) ? 1 : 0
-            int niO     = isNIO(question) ? 1 : 0
+            int iOnM = isFixedLater(question) ? 1 : 0
+            int niO = isNIO(question) ? 1 : 0
 
-            double numerator   = (iO + behoben + iOnM) * Gm * Gz
+            double numerator = (iO + behoben + iOnM) * Gm * Gz
             double denominator = numerator + (niO * Gm * Gz * ageWeeks)
 
-            weekResults[j] = weekResults.get(j, [num:0.0, den:0.0])
+            weekResults[j] = weekResults.get(j, [num: 0.0, den: 0.0])
             weekResults[j].num += numerator
             weekResults[j].den += denominator
 
-            categoryResults[category] = categoryResults.get(category, [num:0.0, den:0.0])
+            categoryResults[category] = categoryResults.get(category, [num: 0.0, den: 0.0])
             categoryResults[category].num += numerator
             categoryResults[category].den += denominator
         }
@@ -110,17 +112,17 @@ class KVSPerformanceCalculator {
         double totalDenominator = weekResults.values().sum { it.den } ?: 0.0
         double performanceTotal = totalDenominator > 0 ? (totalNumerator / totalDenominator) : 0.0
 
-        Map<String,Double> performanceByCategory = categoryResults.collectEntries { cat, vals ->
+        Map<String, Double> performanceByCategory = categoryResults.collectEntries { cat, vals ->
             double num = vals.num ?: 0.0
             double den = vals.den ?: 0.0
             [(cat): (den > 0 ? (num / den) : 0.0)]
         }
 
         return [
-                performanceTotal      : performanceTotal,
-                performanceByCategory : performanceByCategory,
-                evaluatedWeeks        : weekResults.keySet().sort(),
-                lastUpdated           : LocalDate.now().toString()
+                performanceTotal     : performanceTotal,
+                performanceByCategory: performanceByCategory,
+                evaluatedWeeks       : weekResults.keySet().sort(),
+                lastUpdated          : LocalDate.now().toString()
         ]
     }
 
@@ -140,12 +142,22 @@ class KVSPerformanceCalculator {
                 .toLocalDate()
     }
 
-     //Retrieves the KVS category from a custom field (falls back to "Uncategorized").
-    //TODO will we have category??
+    /**
+     * Retrieves the KVS category from the Question's "Category EN" custom field.
+     * Falls back to "Uncategorized" when the field is missing or empty.
+     *
+     * NOTE: "Category EN" is a free-text field — the resulting map keys reflect
+     * whatever users typed. Trimmed to avoid trailing whitespace duplicates.
+     */
     String getCategory(Issue q) {
-        //TODO - enable if we have category for KVS
-        //return q.getCustomFieldValue("KVS Category") ?: "Uncategorized"
-        return "Uncategorized";
+        try {
+            def raw = myBaseUtil.getCustomFieldValue(q, Question.CATEGORY_EN_FIELD_NAME)
+            String val = raw?.toString()?.trim()
+            return (val != null && !val.isEmpty()) ? val : "Uncategorized"
+        } catch (Exception e) {
+            logger?.setWarnMessage("getCategory failed for ${q?.key}: ${e.message}")
+            return "Uncategorized"
+        }
     }
 
     // Weighting factor Gm (criterion weight).
@@ -154,15 +166,15 @@ class KVSPerformanceCalculator {
     // Weighting factor Gz (category weight).
     double getWeightGz(String category) { return 1.0 }
 
-     // Status "OK" maps to iO_jm = 1 (compliant criterion)
-    boolean isIO(Issue q)        { return q.getStatus().name == "OK" }
+    // Status "OK" maps to iO_jm = 1 (compliant criterion)
+    boolean isIO(Issue q) { return q.getStatus().name == "OK" }
 
-     // Status "FIXED" maps to behoben_jm = 1 (fixed in the same week)
-    boolean isBehoben(Issue q)   { return q.getStatus().name == "FIXED" }
+    // Status "FIXED" maps to behoben_jm = 1 (fixed in the same week)
+    boolean isBehoben(Issue q) { return q.getStatus().name == "FIXED" }
 
-     // Status "I.O.N.M." maps to iOnM_jm = 1 (fixed retrospectively by a measure)
-    boolean isFixedLater(Issue q){ return q.getStatus().name == "I.O.N.M." }
+    // Status "I.O.N.M." maps to iOnM_jm = 1 (fixed retrospectively by a measure)
+    boolean isFixedLater(Issue q) { return q.getStatus().name == "I.O.N.M." }
 
-     // Status "NOK" maps to niO_jm = 1 (still open deviation)
-    boolean isNIO(Issue q)       { return q.getStatus().name == "NOK" }
+    // Status "NOK" maps to niO_jm = 1 (still open deviation)
+    boolean isNIO(Issue q) { return q.getStatus().name == "NOK" }
 }
