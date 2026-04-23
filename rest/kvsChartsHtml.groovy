@@ -5,16 +5,6 @@ package rest
  *
  * @author chabrecek.anton
  * Created on 27. 2. 2026.
- *
- * Extended layout supporting:
- *  - PC scope picker (PC2 / PC3 / PC4 / PC6 / PC9 / Overall)
- *  - SVG half-circle gauge (R/Y/G zones) for overall KPI
- *  - per-category gauges grid
- *  - trend performance line chart
- *  - 3 separate history line charts (open / closed / created measures)
- *  - audit execution stacked bar + audit-rate line overlay
- *  - status donut (kept)
- *  - tables: open measures, closed measures (last 30 days), open audits
  */
 
 import com.onresolve.scriptrunner.runner.rest.common.CustomEndpointDelegate
@@ -48,7 +38,7 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
     .kvs-topbar .ds-badge.mixed    { background: #DEEBFF; color: #0747A6; }
 
     .chart-grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: flex-start; }
-    .chart-card { flex: 1 1 400px; max-width: 520px; background: #fafbfc; padding: 14px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); box-sizing: border-box; }
+    .chart-card { flex: 1 1 400px; /*max-width: 520px;*/ background: #fafbfc; padding: 14px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); box-sizing: border-box; }
     .chart-card--wide  { flex: 1 1 820px; max-width: 1060px; }
     .chart-card--full  { flex: 1 1 100%; max-width: none; }
     .chart-card--small { flex: 1 1 320px; max-width: 360px; }
@@ -63,10 +53,14 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
     .kvs-gauge-value { font-size: 28px; font-weight: 700; color: #172B4D; line-height: 1; }
     .kvs-gauge-sub { font-size: 11px; color: #6B778C; }
 
-    .kvs-category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-    .kvs-category-item { background: #fff; padding: 10px 8px 8px 8px; border-radius: 4px; border: 1px solid #ebecf0; text-align: center; }
-    .kvs-category-item .cat-name { font-size: 11px; font-weight: 600; color: #172B4D; margin-bottom: 4px; min-height: 28px; display: flex; align-items: center; justify-content: center; }
-    .kvs-category-item .cat-value { font-size: 18px; font-weight: 700; }
+    .kvs-category-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+    .kvs-category-item { background: #fff; padding: 10px 6px 8px 6px; border-radius: 4px; border: 1px solid #ebecf0; text-align: center; }
+    .kvs-category-item .cat-name { font-size: 11px; font-weight: 600; color: #172B4D; margin-bottom: 4px; min-height: 28px; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
+    .kvs-category-item .cat-value { font-size: 16px; font-weight: 700; }
+    .kvs-category-item svg { width: 100%; height: auto; max-width: 140px; }
+    /* Narrow viewports: gracefully reduce columns */
+    @media (max-width: 1100px) { .kvs-category-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 720px)  { .kvs-category-grid { grid-template-columns: repeat(2, 1fr); } }
 
     .kvs-overall-breakdown { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; margin-top: 8px; }
     .kvs-overall-breakdown .row { min-width: 120px; display: flex; justify-content: space-between; gap: 8px; }
@@ -87,11 +81,55 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
 
     .footer { margin-top: 20px; font-size: 11px; text-align: center; color: #777; }
 
-    /* Print tweaks */
+    /* ─── What is Performance? info card ─── */
+    .kvs-info-card { margin-top: 16px; padding: 14px 18px; background: #EAF4FF; border-left: 4px solid #0052CC; border-radius: 3px; }
+    .kvs-info-card h3 { font-size: 13px; font-weight: 700; margin: 0 0 6px 0; color: #0747A6; }
+    .kvs-info-card p { margin: 4px 0; color: #42526E; line-height: 1.5; font-size: 12px; }
+    .kvs-info-card .zones { display: flex; gap: 14px; margin-top: 6px; flex-wrap: wrap; }
+    .kvs-info-card .zone { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #42526E; }
+    .kvs-info-card .zone .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .kvs-info-card code { background: #fff; padding: 0 4px; border-radius: 2px; font-size: 11px; color: #172B4D; border: 1px solid #dfe1e6; }
+
+    /* ─── Source data collapsibles ─── */
+    .src-details { margin-top: 8px; font-size: 11px; }
+    .src-details summary { cursor: pointer; color: #0052CC; user-select: none; padding: 2px 0; font-weight: 600; outline: none; }
+    .src-details summary:hover { color: #0747A6; text-decoration: underline; }
+    .src-details[open] summary { margin-bottom: 4px; }
+    .src-details .src-desc { color: #42526E; line-height: 1.4; margin: 2px 0 6px 0; }
+    .src-details pre { background: #f4f5f7; padding: 8px 10px; border-radius: 3px; border-left: 3px solid #0052CC;
+        font-family: Menlo, Consolas, "Courier New", monospace; font-size: 11px; margin: 4px 0;
+        white-space: pre-wrap; word-break: break-word; color: #172B4D; }
+    .src-details .src-open-jira { display: inline-block; margin-top: 4px; font-size: 11px; color: #0052CC; text-decoration: none; }
+    .src-details .src-open-jira:hover { text-decoration: underline; }
+    .src-details .src-badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px;
+        background: #DFE1E6; color: #42526E; margin-left: 6px; vertical-align: middle; font-weight: 600; }
+    .src-details .src-badge.jql { background: #DEEBFF; color: #0747A6; }
+    .src-details .src-badge.snapshot { background: #E3FCEF; color: #006644; }
+    .src-details .src-badge.formula { background: #FFF0B3; color: #974F0C; }
+
+    /* Print tweaks — A4 portrait optimised */
     @media print {
+        body { background: #fff; }
+        .kvs-dashboard { padding: 0; background: #fff; }
+        .kvs-dashboard .container { max-width: none; box-shadow: none; padding: 0; }
         .kvs-topbar button, .kvs-topbar select { display: none; }
-        .chart-card { page-break-inside: avoid; }
+        .kvs-topbar label { display: none; }
+        .chart-card { page-break-inside: avoid; break-inside: avoid; box-shadow: none; border: 1px solid #dfe1e6; }
+        .chart-grid { page-break-inside: avoid; break-inside: avoid; }
+        .src-details { display: none; }
+        .kvs-info-card { break-inside: avoid; page-break-inside: avoid; }
+        /* Category grid stays dense on paper — 6 per row works on A4 landscape,
+           4 per row more readable on A4 portrait. Use 4 as the safe default. */
+        .kvs-category-grid { grid-template-columns: repeat(4, 1fr); }
+        .kvs-category-item .cat-name { font-size: 10px; min-height: 24px; }
+        .kvs-category-item .cat-value { font-size: 14px; }
+        /* Landscape users can uncomment the following to use 6 columns:
+           @page { size: A4 landscape; }
+           .kvs-category-grid { grid-template-columns: repeat(6, 1fr); } */
     }
+
+    #auditExecChart { height: 300px !important; }
+    #statusChart { max-height: 300px; max-width: 300px; }
 </style>
 
 <div class="kvs-dashboard">
@@ -127,7 +165,7 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
 
     <div class="subtitle" id="kvs-subtitle">–</div>
 
-    <!-- Row 1: Overall KPI gauge + per-category grid + trend (3 cards side-by-side) -->
+    <!-- Row 1: Overall KPI gauge + Status Donut + Trend (all compact, side by side) -->
     <div class="chart-grid">
 
       <div class="chart-card">
@@ -135,52 +173,83 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
         <div id="overallGauge" class="kvs-gauge-wrap"></div>
         <div id="overallBreakdown" class="kvs-overall-breakdown"></div>
         <div class="chart-desc">Rolling KPI across the selected window. Red &lt; 75%, Yellow 75–90%, Green &ge; 90%.</div>
+        <details class="src-details" data-src-key="overallGauge"></details>
       </div>
 
-      <div class="chart-card">
-        <h3>Performance per Category</h3>
-        <div id="categoryGrid" class="kvs-category-grid"></div>
-        <div class="chart-desc">Per-category KPI from the latest weekly snapshot (based on "Category EN" on Question issues).</div>
-      </div>
+      
 
       <div class="chart-card">
         <h3>Trend – Overall Performance</h3>
         <canvas id="trendPerfChart"></canvas>
         <div class="trendPerfChart-chart-desc chart-desc">Overall KPI % per week over the selected window.</div>
+        <details class="src-details" data-src-key="trendPerf"></details>
       </div>
 
     </div>
 
-    <!-- Row 2: History of open / closed / created measures -->
+    <!-- Row 2: Performance per Category (FULL WIDTH, 6 gauges per row) -->
+    <div class="chart-grid" style="margin-top: 16px;">
+      <div class="chart-card chart-card--full">
+        <h3>Performance per Category</h3>
+        <div id="categoryGrid" class="kvs-category-grid"></div>
+        <div class="chart-desc">Per-category KPI from the latest weekly snapshot (based on "Category EN" on Question issues).</div>
+        <details class="src-details" data-src-key="categoryGrid"></details>
+      </div>
+    </div>
+
+    <!-- Performance explainer: what does the number mean? -->
+    <div class="kvs-info-card">
+      <h3>What is “Performance”?</h3>
+      <p>
+        KVS Performance is a weighted KPI: positive Question statuses
+        (<code>OK</code>, <code>FIXED</code>, <code>I.O.N.M.</code>) raise it,
+        while unresolved deviations (<code>NOK</code>) lower it —
+        and the longer a NOK stays open, the more it penalises the score
+        (<em>N × weight × age-in-weeks</em>). The gauge shows the average
+        across the selected weekly window (non-zero weeks only).
+      </p>
+      <div class="zones">
+        <span class="zone"><span class="dot" style="background:#E53935"></span>Red &lt; 75 % — action required</span>
+        <span class="zone"><span class="dot" style="background:#FDD835"></span>Yellow 75–90 % — needs attention</span>
+        <span class="zone"><span class="dot" style="background:#2E7D32"></span>Green ≥ 90 % — healthy</span>
+      </div>
+    </div>
+
+    <!-- Row 3: History of open / closed / created measures -->
     <div class="chart-grid" style="margin-top: 16px;">
       <div class="chart-card">
         <h3>History – Open Measures</h3>
         <canvas id="histOpenChart"></canvas>
-        <div class="histOpenChart-chart-desc chart-desc">Count of open measures per week.</div>
+        <div class="histOpenChart-chart-desc chart-desc">Count of open measures at the end of each week.</div>
+        <details class="src-details" data-src-key="historyOpen"></details>
       </div>
       <div class="chart-card">
         <h3>History – Closed Measures</h3>
         <canvas id="histClosedChart"></canvas>
-        <div class="histClosedChart-chart-desc chart-desc">Count of resolved measures per week.</div>
+        <div class="histClosedChart-chart-desc chart-desc">Count of measures resolved in each week.</div>
+        <details class="src-details" data-src-key="historyClosed"></details>
       </div>
       <div class="chart-card">
         <h3>History – Created Measures</h3>
         <canvas id="histCreatedChart"></canvas>
-        <div class="histCreatedChart-chart-desc chart-desc">Count of newly created measures per week.</div>
+        <div class="histCreatedChart-chart-desc chart-desc">Count of measures created in each week.</div>
+        <details class="src-details" data-src-key="historyCreated"></details>
       </div>
     </div>
 
-    <!-- Row 3: Audit execution + status donut -->
+    <!-- Row 4: Audit Execution (FULL WIDTH — wide bar+line chart) -->
     <div class="chart-grid" style="margin-top: 16px;">
-      <div class="chart-card chart-card--wide">
+      <div class="chart-card">
         <h3>Audit Execution</h3>
         <canvas id="auditExecChart"></canvas>
         <div class="auditExecChart-chart-desc chart-desc">Stacked bars: open vs. closed audits per week. Line overlay: audit rate (closed / total) in %.</div>
+        <details class="src-details" data-src-key="auditExecution"></details>
       </div>
       <div class="chart-card">
         <h3>Question Status Distribution</h3>
         <canvas id="statusChart"></canvas>
         <div class="statusChart-chart-desc chart-desc">Aggregated Question statuses from the latest snapshot.</div>
+        <details class="src-details" data-src-key="statusDonut"></details>
       </div>
     </div>
 
@@ -208,6 +277,7 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
             <tbody></tbody>
           </table>
         </div>
+        <details class="src-details" data-src-key="openMeasuresTable"></details>
       </div>
     </div>
 
@@ -235,6 +305,7 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
             <tbody></tbody>
           </table>
         </div>
+        <details class="src-details" data-src-key="closedMeasuresTable"></details>
       </div>
     </div>
 
@@ -261,6 +332,7 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
             <tbody></tbody>
           </table>
         </div>
+        <details class="src-details" data-src-key="openAuditsTable"></details>
       </div>
     </div>
 

@@ -135,34 +135,28 @@ kvsChartsData(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
             String weekNo = String.valueOf(mon.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR))
             String source = "onthefly"
 
+            // Measures / audits are ALWAYS computed on-the-fly so the chart
+            // reflects today's Jira state (stored snapshot values freeze Monday
+            // morning and miss activity happening during the week, including on
+            // the snapshot day itself). Performance / statusCounts / categories
+            // stay snapshot-based because those represent a frozen point-in-time.
             if (slice) {
-                // Use snapshot
                 source = "snapshot"
                 anySnapshotUsed = true
 
                 perfPct = toPct(slice.performanceTotal)
-                measures = (slice.measures ?: [:]) as Map
-                questionsStats = (slice.questions ?: [:]) as Map
                 statusCounts = (slice.statusCounts ?: [:]) as Map
                 weekNo = (slice.week ?: weekNo).toString()
-
-                // audits block may be missing in older snapshots -> fallback
-                if (slice.audits) {
-                    audits = slice.audits as Map
-                } else {
-                    audits = computeAuditStatsOnTheFly(myBaseUtil, auditJqlBase, mon, sun)
-                    anyOnTheFlyUsed = true
-                }
             } else {
-                // Fully on-the-fly
                 anyOnTheFlyUsed = true
-                measures = computeStatsOnTheFly(myBaseUtil, measuresJqlBase, mon, sun)
-                questionsStats = computeStatsOnTheFly(myBaseUtil, questionsJqlBase, mon, sun)
-                audits = computeAuditStatsOnTheFly(myBaseUtil, auditJqlBase, mon, sun)
                 statusCounts = [:]
-                // Weekly performance on-the-fly is expensive and approximate; set to 0 until snapshot arrives.
                 perfPct = 0G
             }
+
+            // Always fresh counts for the per-week history charts
+            measures = computeStatsOnTheFly(myBaseUtil, measuresJqlBase, mon, sun)
+            questionsStats = computeStatsOnTheFly(myBaseUtil, questionsJqlBase, mon, sun)
+            audits = computeAuditStatsOnTheFly(myBaseUtil, auditJqlBase, mon, sun)
 
             weekLabels << ("W" + weekNo)
             keyFigure << perfPct
@@ -233,6 +227,70 @@ kvsChartsData(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
         List closedMeasures = fetchClosedMeasures(myBaseUtil, measuresJqlBase, 30, listLimit)
         List openAudits = fetchOpenAudits(myBaseUtil, auditJqlBase, listLimit, pcIssue, isOverall)
 
+        // ---- SOURCE DATA DESCRIPTORS — one per chart / table, rendered in the UI
+        String closedMeasuresLiveJql = "(${measuresJqlBase}) AND resolution != Unresolved AND resolutiondate >= \"${LocalDate.now().minusDays(30)}\" ORDER BY resolutiondate DESC"
+        String openMeasuresLiveJql = "(${measuresJqlBase}) AND resolution = Unresolved ORDER BY created DESC"
+        String openAuditsLiveJql = "(${auditJqlBase}) AND resolution = Unresolved ORDER BY \"${Audit.TARGET_END_FIELD_NAME}\" ASC"
+
+        Map sources = [
+                overallGauge        : [
+                        type        : "formula",
+                        description : "Rolling KPI across the last " + weeks + " weekly snapshots. Formula: sum of weighted positive statuses divided by sum of weighted positive + weighted NOK aging penalties. Values averaged across the window (non-zero weeks only). Zones: Red < 75 pct, Yellow 75-90 pct, Green >= 90 pct.",
+                        questionsJql: questionsJqlBase
+                ],
+                categoryGrid        : [
+                        type        : "snapshot",
+                        description : "Per-category KPI from the LATEST available weekly snapshot for this scope. Categories come from the Category EN custom field on Question issues (free-text). Empty values fall back to Uncategorized.",
+                        questionsJql: questionsJqlBase
+                ],
+                trendPerf           : [
+                        type        : "snapshot",
+                        description : "Weekly KPI value per scope. Values come from KPI snapshots in project " + CustomFieldsConstants.PROJECT_KPI + ". Weeks without a snapshot show 0 pct.",
+                        questionsJql: questionsJqlBase
+                ],
+                historyOpen         : [
+                        type        : "jql",
+                        description : "Number of measures that were OPEN at the end of each week: created on/before that Sunday AND (still unresolved OR resolutiondate is after that Sunday). Counted live per week.",
+                        jqlTemplate : "(" + measuresJqlBase + ") AND created < [week+1 Monday] AND (resolution = Unresolved OR resolutiondate >= [week+1 Monday])"
+                ],
+                historyClosed       : [
+                        type        : "jql",
+                        description : "Number of measures RESOLVED in each week (resolutiondate in Mon-Sun range). Counted live per week.",
+                        jqlTemplate : "(" + measuresJqlBase + ") AND resolutiondate >= [Monday] AND resolutiondate < [next Monday]"
+                ],
+                historyCreated      : [
+                        type        : "jql",
+                        description : "Number of measures CREATED in each week (created date in Mon-Sun range). Counted live per week.",
+                        jqlTemplate : "(" + measuresJqlBase + ") AND created >= [Monday] AND created < [next Monday]"
+                ],
+                auditExecution      : [
+                        type             : "jql",
+                        description      : "Weekly audit execution. OPEN = audits targeted for that week still unresolved (Target end in week). CLOSED = audits resolved in that week (resolutiondate in week). RATE = closed / (open + closed).",
+                        jqlTemplateOpen  : "(" + auditJqlBase + ") AND resolution = Unresolved AND \"" + Audit.TARGET_END_FIELD_NAME + "\" >= [Monday] AND \"" + Audit.TARGET_END_FIELD_NAME + "\" < [next Monday]",
+                        jqlTemplateClosed: "(" + auditJqlBase + ") AND resolution != Unresolved AND resolutiondate >= [Monday] AND resolutiondate < [next Monday]"
+                ],
+                statusDonut         : [
+                        type        : "snapshot",
+                        description : "Question statuses aggregated across all visible weekly snapshots for this scope. Numbers are sums across the window (a question appearing in multiple weekly snapshots is counted multiple times).",
+                        questionsJql: questionsJqlBase
+                ],
+                openMeasuresTable   : [
+                        type        : "jql",
+                        description : "Live list of currently OPEN measures in this scope (resolution = Unresolved).",
+                        jql         : openMeasuresLiveJql
+                ],
+                closedMeasuresTable : [
+                        type        : "jql",
+                        description : "Live list of measures CLOSED within the last 30 days (resolution != Unresolved AND resolutiondate within the last 30 days). If empty, no measures have been resolved in that window for this scope.",
+                        jql         : closedMeasuresLiveJql
+                ],
+                openAuditsTable     : [
+                        type        : "jql",
+                        description : "Live list of currently OPEN audits in this scope, sorted by Target end ASC.",
+                        jql         : openAuditsLiveJql
+                ]
+        ]
+
         // ---- assemble result
         def result = [
                 pcKey           : pcKey,
@@ -253,6 +311,7 @@ kvsChartsData(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
                 openMeasures    : openMeasures,
                 closedMeasures  : closedMeasures,
                 openAudits      : openAudits,
+                sources         : sources,
 
                 // --- LEGACY fields kept for backward compatibility ---
                 weeks           : weekLabels,
@@ -306,11 +365,6 @@ Map buildOverallSection(Map latestSnapshotPayload, BigDecimal avg, List weekLabe
     ]
 }
 
-// ─── Option B: overall = union of the five main PC filters (PC2/PC3/PC4/PC6/PC9) ───
-// The five saved Jira filters remain the single source of truth.
-// Kept as a helper (not a script-level `static final` — that fails in ScriptRunner
-// REST endpoint scripts with @BaseScript CustomEndpointDelegate and produces
-// a 404 because the endpoint never gets registered).
 String kvsOverallQuestionsJql() {
     return "filter in (40422, 40423, 40424, 40425, 40426)"
 }
@@ -372,7 +426,12 @@ Map computeStatsOnTheFly(MyBaseUtil myBaseUtil, String baseJql, LocalDate weekSt
     String ws = weekStart.toString()
     String weExcl = weekEnd.plusDays(1).toString()
     int open = 0, done = 0, created = 0, resolved = 0
-    try { open = myBaseUtil.findIssues("(${baseJql}) AND resolution = Unresolved").size() } catch (e) {}
+    // "Open at end of target week" = created on/before week end AND still unresolved (or resolved after week end)
+    try {
+        open = myBaseUtil.findIssues(
+                """(${baseJql}) AND created < "${weExcl}" AND (resolution = Unresolved OR resolutiondate >= "${weExcl}")"""
+        ).size()
+    } catch (e) {}
     try { done = myBaseUtil.findIssues("(${baseJql}) AND resolution != Unresolved").size() } catch (e) {}
     try { created = myBaseUtil.findIssues("(${baseJql}) AND created >= \"${ws}\" AND created < \"${weExcl}\"").size() } catch (e) {}
     try { resolved = myBaseUtil.findIssues("(${baseJql}) AND resolutiondate >= \"${ws}\" AND resolutiondate < \"${weExcl}\"").size() } catch (e) {}
