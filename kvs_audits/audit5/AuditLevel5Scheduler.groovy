@@ -6,15 +6,22 @@ import kvs_audits.common.CustomFieldsConstants
 import kvs_audits.common.IAuditScheduler
 import com.atlassian.jira.issue.Issue
 import kvs_audits.issueType.AuditPreparation
+import kvs_audits.issueType.Question
 
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.temporal.IsoFields
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 
 /**
  * AuditLevel5Scheduler
+ *
+ * Mid-month rotation:
+ *  - Fires on the 15th of each month (Interval is hidden / ignored on L5).
+ *  - For each Audit Preparation creates up to N audits per month, where
+ *    N = min(numberOfAuditors, numberOfUniqueProfitCenters).
+ *  - Round-robin auditors across months so every auditor gets exactly one audit per month.
+ *  - At most one audit per Profit Center per month (PCs rotate).
  *
  * @author chabrecek.anton
  * Created on 5. 3. 2026.
@@ -22,6 +29,7 @@ import groovy.json.JsonOutput
 class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
 
     public static final String auditLevel = CustomFieldsConstants.AUDIT_LEVEL_5
+    private static final String MID_MONTH_INTERVAL = "monthly-mid"
 
     AuditLevel5Scheduler() {
         super(auditLevel)
@@ -51,7 +59,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         LocalDate rotationDay = dateOfNextRotation.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
 
         int safetyCounter = 0
-        final int SAFETY_LIMIT = 100
+        final int SAFETY_LIMIT = 12
 
         while (!rotationDay.isAfter(today.plusMonths(3)) && safetyCounter < SAFETY_LIMIT) {
             safetyCounter++
@@ -78,6 +86,12 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         }
     }
 
+    /**
+     * One mid-month rotation tick: creates up to N audits (N = min(auditors, uniquePCs))
+     * - each on a different Profit Center
+     * - each assigned to a different auditor (round-robin via globalAuditorIndex)
+     * - PC ordering shifted via usageTurnIndex so over months everyone visits every PC.
+     */
     private void processRotation(Issue prepIssue,
                                  AuditLevel5Handler handler,
                                  AuditPreparation prep,
@@ -86,94 +100,168 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         logger.setInfoMessage("Level 5 rotation for ${prepIssue.key} on ${rotationDay}")
 
         Map data = parseRotationData(prep)
-
         Map usages = data.questions_usages as Map
         if (!usages) {
-            logger.setWarnMessage("No 'questions_usages' found for ${prepIssue.key}; skipping.")
+            logger.setWarnMessage("No 'questions_usages' found for ${prepIssue.key}; advancing date only.")
+            advanceDate(handler, rotationDay)
             return
         }
 
         List<String> usageKeys = (usages.keySet() as List<String>).sort()
         if (usageKeys.isEmpty()) {
-            logger.setWarnMessage("No questions_usages for ${prepIssue.key}; skipping.")
+            logger.setWarnMessage("No questions_usages for ${prepIssue.key}; advancing date only.")
+            advanceDate(handler, rotationDay)
             return
         }
 
-        int turnIdx = normalizeTurnIndex(data, usageKeys.size())
-        String usageKey = usageKeys[turnIdx]
-        def u = usages[usageKey]
+        List<String> liveAuditors = prep.getAuditors() ?: []
+        if (liveAuditors.isEmpty()) {
+            logger.setErrorMessage("No auditors on ${prepIssue.key}; advancing date only.")
+            advanceDate(handler, rotationDay)
+            return
+        }
+        int auditorCount = liveAuditors.size()
 
-        // auditors missing -> advance usageTurnIndex and persist
-        if (!u.auditors || u.auditors.isEmpty()) {
-            logger.setErrorMessage("No internal auditors defined for ${usageKey}; skipping this usage")
-            data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
-            handler.updateRotationData(JsonOutput.toJson(data))
+        // Resolve usage -> Profit Center once for this rotation
+        List<Map> usagePcMap = []
+        usageKeys.each { String uk ->
+            Issue pc = jqlSearcher.getPCFromQuestionUsage(uk, auditLevel)
+            if (pc) {
+                usagePcMap << [usage: uk, pcKey: pc.key]
+            } else {
+                logger.setWarnMessage("PC not found for usage ${uk}; skipping it this month.")
+            }
+        }
+        if (usagePcMap.isEmpty()) {
+            advanceDate(handler, rotationDay)
+            return
+        }
+
+        int uniquePcCount = (usagePcMap*.pcKey as Set).size()
+        int targetCount = Math.min(auditorCount, uniquePcCount)
+
+        int turnIdx = normalizeTurnIndex(data, usagePcMap.size())
+        int gIdx = (data.globalAuditorIndex instanceof Number) ? ((Number) data.globalAuditorIndex).intValue() : 0
+
+        // Pick up to targetCount usages with unique PCs, scanning from turnIdx
+        Set<String> seenPcThisMonth = [] as Set
+        List<String> pickedUsages = []
+        int attempts = 0
+        int cursor = turnIdx
+        while (pickedUsages.size() < targetCount && attempts < usagePcMap.size()) {
+            Map row = usagePcMap[cursor % usagePcMap.size()]
+            if (seenPcThisMonth.add(row.pcKey as String)) {
+                pickedUsages << (row.usage as String)
+            }
+            cursor++
+            attempts++
+        }
+
+        if (pickedUsages.isEmpty()) {
+            logger.setWarnMessage("Nothing to rotate for ${prepIssue.key} on ${rotationDay}.")
+            advanceDate(handler, rotationDay)
+            return
+        }
+
+        if (auditorCount > uniquePcCount) {
+            logger.setWarnMessage("L5 ${prepIssue.key}: auditors=${auditorCount} > uniquePCs=${uniquePcCount}; only ${pickedUsages.size()} audits this month.")
+        }
+
+        pickedUsages.eachWithIndex { String usageKey, int idx ->
+            String forcedAuditor = liveAuditors[(gIdx + idx) % auditorCount]
+            processSinglePick(prepIssue, handler, prep, rotationDay, usageKey, usages, forcedAuditor)
+        }
+
+        // Advance global pointers AFTER picks succeed/fail (we always move forward to avoid infinite loop)
+        int picks = pickedUsages.size()
+        data.usageTurnIndex = (turnIdx + attempts) % usagePcMap.size()
+        data.globalAuditorIndex = (gIdx + picks) % auditorCount
+        data.questions_usages = usages
+        handler.updateRotationData(JsonOutput.toJson(data))
+
+        advanceDate(handler, rotationDay)
+    }
+
+    private void processSinglePick(Issue prepIssue,
+                                   AuditLevel5Handler handler,
+                                   AuditPreparation prep,
+                                   LocalDate rotationDay,
+                                   String usageKey,
+                                   Map usages,
+                                   String forcedAuditor) {
+        def u = usages[usageKey]
+        if (u == null) {
+            logger.setErrorMessage("No rotation entry for ${usageKey}; skipping pick.")
             return
         }
 
         Issue pc = jqlSearcher.getPCFromQuestionUsage(usageKey, auditLevel)
         if (!pc) {
-            logger.setErrorMessage("Rotation failed: invalid usageKey '${usageKey}', profit center not found")
-            data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
-            handler.updateRotationData(JsonOutput.toJson(data))
+            logger.setErrorMessage("Invalid usageKey '${usageKey}' (PC not found); skipping pick.")
             return
         }
 
-        String subAreaLetter = resolveSubAreaOrSkip(handler, data, usageKeys, turnIdx, usageKey, pc)
-        if (!subAreaLetter) return
+        String subAreaLetter = parseSubAreaLetterOrNull(usageKey)
+        if (!subAreaLetter) {
+            List<String> aKeys = jqlSearcher.getFunctionalAreasKeys(pc, "A") ?: []
+            List<String> bKeys = jqlSearcher.getFunctionalAreasKeys(pc, "B") ?: []
+            boolean onlyA = aKeys && !bKeys
+            boolean onlyB = bKeys && !aKeys
+            if (onlyA) subAreaLetter = "A"
+            else if (onlyB) subAreaLetter = "B"
+            else {
+                logger.setErrorMessage("Level 5 usage '${usageKey}' has no A/B and PC ${pc.key} has both; skipping pick.")
+                return
+            }
+        }
 
         List<String> liveSubAreas = jqlSearcher.getFunctionalAreasKeys(pc, subAreaLetter)
         if (!liveSubAreas) {
-            logger.setErrorMessage("No Functional Areas for ${pc.key} with sub-area '${subAreaLetter}' for usage ${usageKey}")
-            data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
-            handler.updateRotationData(JsonOutput.toJson(data))
+            logger.setErrorMessage("No Functional Areas for ${pc.key} sub-area '${subAreaLetter}' (usage ${usageKey}); skipping pick.")
             return
         }
 
-        // reconcile workplaces vs live
         u.workplaces = dynamicReconcileRotationUnits(usageKey, (u.workplaces as List<String>) ?: [], liveSubAreas)
         if (!u.workplaces) {
-            logger.setErrorMessage("No sub-areas remain for ${usageKey} after reconciliation; skipping.")
-            data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
-            handler.updateRotationData(JsonOutput.toJson(data))
+            logger.setErrorMessage("No sub-areas remain for ${usageKey} after reconciliation; skipping pick.")
             return
         }
 
-        // (cross audit disabled like L4)
+        // Reconcile per-usage auditors list with live ones (keeps JSON in sync)
+        getLiveAuditors(prep, usageKey, u)
+
         u.rotationCount = (u.rotationCount ?: 0) + 1
         boolean isCross = false
 
-        // auditor selection (global round robin like L4)
-        String auditor = pickAuditor(prepIssue, prep, rotationDay, usageKey, u, data)
-        if (!auditor) return
+        if (!forcedAuditor) {
+            logger.setErrorMessage("No auditor available for usage ${usageKey}; skipping pick.")
+            return
+        }
 
-        // pick FA
-        String faKey = pickFunctionalAreaOrSkip(handler, data, usageKeys, turnIdx, usageKey, u)
-        if (!faKey) return
+        // Pick FA via per-usage workplace cursor
+        List<String> wps = (u.workplaces as List<String>) ?: []
+        int cur = Math.max(0, (u.currentWorkplaceIndex ?: 0))
+        int idx = cur % wps.size()
+        String faKey = wps[idx]
+        u.currentWorkplaceIndex = (idx + 1) % wps.size()
 
-        // special due (only for non-cross)
         List<String> specialDueForThisAudit = computeSpecialDueForFa(u, faKey, rotationDay)
 
-        logger.setInfoMessage("RotationJob(L5): usage=${usageKey}, subArea=${faKey}, auditor=${auditor}, cross=${isCross}")
-        handler.rotateOneAudit(usageKey, faKey, auditor, isCross, rotationDay, specialDueForThisAudit)
+        logger.setInfoMessage("RotationJob(L5): usage=${usageKey}, subArea=${faKey}, auditor=${forcedAuditor}, cross=${isCross}")
+        handler.rotateOneAudit(usageKey, faKey, forcedAuditor, isCross, rotationDay, specialDueForThisAudit)
 
-        // commit special due nextRotationDate
         if (specialDueForThisAudit) {
             commitSpecialDue(u, faKey, specialDueForThisAudit, rotationDay)
         }
+    }
 
-        // persist json
-        data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
-        data.questions_usages = usages
-        handler.updateRotationData(JsonOutput.toJson(data))
-
-        // advance date
-        LocalDate next = CommonHelper.getNextDate(rotationDay, prep.getInterval())
+    private void advanceDate(AuditLevel5Handler handler, LocalDate rotationDay) {
+        LocalDate next = CommonHelper.getNextDate(rotationDay, MID_MONTH_INTERVAL)
         logger.setWarnMessage("Date of next rotation: nextRotation = ${next}")
         handler.updateDateOfNextRotation(next)
     }
 
-    // ---------- helpers (same behavior as L4) ----------
+    // ---------- helpers ----------
 
     private Map parseRotationData(AuditPreparation prep) {
         Map m = new JsonSlurper().parseText(prep.getRotation_data()) as Map
@@ -185,73 +273,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
 
     private int normalizeTurnIndex(Map data, int usageCount) {
         int turnIdx = (data.usageTurnIndex instanceof Number) ? (int) data.usageTurnIndex : 0
-        return turnIdx % usageCount
-    }
-
-    private String resolveSubAreaOrSkip(AuditLevel5Handler handler, Map data, List<String> usageKeys, int turnIdx,
-                                        String usageKey, Issue pc) {
-        String subAreaLetter = parseSubAreaLetterOrNull(usageKey)
-        if (!subAreaLetter) {
-            List<String> aKeys = jqlSearcher.getFunctionalAreasKeys(pc, "A") ?: []
-            List<String> bKeys = jqlSearcher.getFunctionalAreasKeys(pc, "B") ?: []
-
-            boolean onlyA = aKeys && !bKeys
-            boolean onlyB = bKeys && !aKeys
-
-            if (onlyA) subAreaLetter = "A"
-            else if (onlyB) subAreaLetter = "B"
-            else {
-                logger.setErrorMessage("Level 5 usage '${usageKey}' no A/B and PC ${pc.key} has A and B – skip it.")
-                data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
-                handler.updateRotationData(JsonOutput.toJson(data))
-                return null
-            }
-        }
-        return subAreaLetter
-    }
-
-    private String pickAuditor(Issue prepIssue,
-                               AuditPreparation prep,
-                               LocalDate rotationDay,
-                               String usageKey,
-                               Map u,
-                               Map data) {
-
-        // reconcile auditors live (same helper from AuditScheduler)
-        String liveAuditor = getLiveAuditors(prep, usageKey, u)
-        if (!liveAuditor) {
-            logger.setErrorMessage("No internal auditors available for ${usageKey} after reconciliation – skipping usage.")
-            return null
-        }
-
-        List<String> curAuditors = (u.auditors as List<String>) ?: []
-        if (!curAuditors) {
-            logger.setErrorMessage("No internal auditors on usage ${usageKey} – skipping.")
-            return null
-        }
-
-        int gIdx = (data?.globalAuditorIndex instanceof Number) ? ((Number) data.globalAuditorIndex).intValue() : 0
-        String auditor = curAuditors[gIdx % curAuditors.size()]
-        data.globalAuditorIndex = (gIdx + 1) % curAuditors.size()
-
-        return auditor
-    }
-
-    private String pickFunctionalAreaOrSkip(AuditLevel5Handler handler, Map data, List<String> usageKeys, int turnIdx,
-                                            String usageKey, Map u) {
-        List<String> wps = (u.workplaces as List<String>) ?: []
-        if (wps.isEmpty()) {
-            logger.setErrorMessage("No sub-areas remain for ${usageKey} after reconciliation; skipping.")
-            data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
-            handler.updateRotationData(JsonOutput.toJson(data))
-            return null
-        }
-
-        int cur = Math.max(0, (u.currentWorkplaceIndex ?: 0))
-        int idx = cur % wps.size()
-        String faKey = wps[idx]
-        u.currentWorkplaceIndex = (idx + 1) % wps.size()
-        return faKey
+        return ((turnIdx % usageCount) + usageCount) % usageCount
     }
 
     private List<String> computeSpecialDueForFa(Map u, String faKey, LocalDate rotationDay) {
@@ -269,11 +291,39 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         return specialDueForThisAudit
     }
 
-    //TODO NOT IN USE FOR NOW if needed, we can copy monthsForOccurrence+getQuestionOccurrence
     private void commitSpecialDue(Map u, String faKey, List<String> specials, LocalDate rotationDay) {
         specials.each { aqKey ->
+            String occ = getQuestionOccurrence(aqKey)
+            int months = monthsForOccurrence(occ)
+            if (months > 0) {
+                def curStr = u.specialQuestions[aqKey]?.wpRotation?[faKey]?.nextRotationDate
+                LocalDate curD = curStr ? LocalDate.parse(curStr as String) : rotationDay
+                LocalDate nxt = curD.plusMonths(months)
 
+                if (!u.specialQuestions[aqKey]) u.specialQuestions[aqKey] = [wpRotation: [:]]
+                if (!u.specialQuestions[aqKey].wpRotation) u.specialQuestions[aqKey].wpRotation = [:]
+                u.specialQuestions[aqKey].wpRotation[faKey] = [nextRotationDate: nxt.toString()]
+
+                logger.setInfoMessage("Advanced special ${aqKey} for ${faKey} → ${nxt}")
+            } else {
+                logger.setWarnMessage("Special ${aqKey}: unsupported occurrence '${occ}' – skipping advance.")
+            }
         }
+    }
+
+    private int monthsForOccurrence(String occ) {
+        if (!occ) return 0
+        occ = occ.toLowerCase()
+        if (occ.contains("semi")) return 6
+        if (occ.contains("year")) return 12
+        return 0
+    }
+
+    private String getQuestionOccurrence(String questionKey) {
+        def qIssue = myBaseUtil.getIssueByKey(questionKey)
+        if (!qIssue) return null
+        def raw = myBaseUtil.getCustomFieldValue(qIssue, Question.AUDIT_INTERVAL_OCCURANCE_FIELD_NAME)
+        return (raw ?: "") as String
     }
 
     private String parseSubAreaLetterOrNull(String usageKey) {

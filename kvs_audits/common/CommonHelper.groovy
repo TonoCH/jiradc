@@ -194,6 +194,9 @@ class CommonHelper {
                 return ourDate.plusMonths(6)
             case "yearly":
                 return ourDate.plusYears(1)
+            case "monthly-mid":
+                LocalDate candidate = ourDate.withDayOfMonth(15)
+                return candidate.isAfter(ourDate) ? candidate : ourDate.plusMonths(1).withDayOfMonth(15)
             default:
                 // default weekly
                 return ourDate.plusDays(7)

@@ -235,7 +235,7 @@ public class AuditHandlerBase {
                             .map { it instanceof java.sql.Timestamp ? it.toLocalDate() : it }
                             .orElse(LocalDate.now())
 
-                    LocalDate firstRotationDay = CommonHelper.getNextDate(startBase, auditPreparationIssue.getInterval())
+                    LocalDate firstRotationDay = CommonHelper.getNextDate(startBase, effectiveInterval())
                     LocalDate baseDate = firstRotationDay
 
                     Map<String, Object> auditOccurrenceMap = [:]
@@ -298,7 +298,7 @@ public class AuditHandlerBase {
                         .map { it instanceof java.sql.Timestamp ? it.toLocalDate() : it }
                         .orElse(LocalDate.now())
 
-                LocalDate firstRotationDay = CommonHelper.getNextDate(startBase, auditPreparationIssue.getInterval())
+                LocalDate firstRotationDay = CommonHelper.getNextDate(startBase, effectiveInterval())
                 LocalDate baseDate = firstRotationDay
 
                 Map<String, Object> auditOccurrenceMap = [:]
@@ -350,6 +350,14 @@ public class AuditHandlerBase {
 
     protected void recordCreatedIssue(String issueKey) {
         createdIssueKeys << issueKey
+    }
+
+    // L5 ignores configured Interval and uses fixed mid-month cadence (Interval can be invisible per spec).
+    protected String effectiveInterval() {
+        if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_5) {
+            return "monthly-mid"
+        }
+        return auditPreparationIssue.getInterval()
     }
 
     protected void initializeRotationData(Map<String, Map<String, Object>> questions_usages, int initialTurnIndex = 0) {

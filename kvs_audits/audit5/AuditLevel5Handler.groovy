@@ -160,7 +160,7 @@ class AuditLevel5Handler extends AuditHandlerBase {
         }
 
         updateRotationData(JsonOutput.toJson(rotation))
-        updateDateOfNextRotation(CommonHelper.getNextDate(startDate, auditPreparationIssue.getInterval()))
+        updateDateOfNextRotation(CommonHelper.getNextDate(startDate, effectiveInterval()))
         def apReload = new AuditPreparation(myBaseUtil.getIssueByKey(auditPreparationIssue.getIssue().getKey()))
         logger.setInfoMessage("AP ${apReload.getIssue().key} nextRotation advanced to ${apReload.getDate_of_next_rotation()}")
     }
