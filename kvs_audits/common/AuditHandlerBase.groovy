@@ -70,8 +70,10 @@ public class AuditHandlerBase {
      * @param rotationFieldId the custom-field ID (e.g. WORKPLACES_FIELD_ID or FUNCTIONAL_AREAS_FIELD_ID)
      */
 
-    protected void executeCreateAudit(List<String> questionUsage, Closure<List<String>> getRotationUnits, String rotationFieldId) {
+    protected void executeCreateAudit(List<String> questionUsage, Closure<List<String>> getRotationUnits, String rotationFieldId, Integer maxInitialAudits = null) {
         try {
+            int initialCreateLimit = (maxInitialAudits == null) ? Integer.MAX_VALUE : Math.max(0, maxInitialAudits)
+            int createdInitialCount = 0
             this.createdIssueKeys = []
             this.logger = new KVSLogger();
 
@@ -128,10 +130,16 @@ public class AuditHandlerBase {
                     boolean isLargePcUsage = ((questionUsageValue =~ /_(A|B)_Level_[45]$/).find())
 
                     // L5: keep original auditor cycling for initial audits
-                    if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_5 && isLargePcUsage && allAuditors) {
+                    /*if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_5 && isLargePcUsage && allAuditors) {
+                        assigneeForThisAudit = allAuditors[initialAuditorIndex % allAuditors.size()]
+                        initialAuditorIndex++
+                    }*/
+
+                    if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_5 && allAuditors) {
                         assigneeForThisAudit = allAuditors[initialAuditorIndex % allAuditors.size()]
                         initialAuditorIndex++
                     }
+
 
                     //update 27.8
                     String subArea = commonHelper.extractValuesFromQuestionUsage(questionUsageValue)[1]
@@ -179,7 +187,6 @@ public class AuditHandlerBase {
                     }
                     if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_4 && isLargePcUsage) processedLargePCs << profitCenter.key
                 } else {
-                    // default (ak pribudnú iné levely): správanie ako L2
                     functionalArea = jqlSearcher.getFA_FromQuestionUsage(questionUsageValue, profitCenter, currentAuditLevel)
                     if (!functionalArea) {
                         logger.setErrorMessage("Functional Area ... cannot be null ...")
@@ -211,6 +218,39 @@ public class AuditHandlerBase {
                     logger.setErrorMessage("No units found for $rotationFieldId on FA $functionalArea")
                 }
 
+                boolean createInitialAudit = true
+                if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_5 && createdInitialCount >= initialCreateLimit) {
+                    createInitialAudit = false
+                }
+
+                if (!createInitialAudit) {
+                    logger.setInfoMessage("L5 strict create: skipping initial Audit creation for usage=${questionUsageValue} (pool only). " +
+                            "createdInitialCount=${createdInitialCount}, limit=${initialCreateLimit}")
+
+                    // --- keep rotation data initialization for this usage (same as later) ---
+                    String usageForSpecials = questionUsageValue
+                    List<Issue> specialQuestions = jqlSearcher.findSpecialQuestionsByUsage(usageForSpecials)
+
+                    LocalDate startBase = Optional.ofNullable(auditPreparationIssue.getDate_target_start())
+                            .map { it instanceof java.sql.Timestamp ? it.toLocalDate() : it }
+                            .orElse(LocalDate.now())
+
+                    LocalDate firstRotationDay = CommonHelper.getNextDate(startBase, auditPreparationIssue.getInterval())
+                    LocalDate baseDate = firstRotationDay
+
+                    Map<String, Object> auditOccurrenceMap = [:]
+                    specialQuestions?.each { qIssue ->
+                        auditOccurrenceMap[qIssue.key] = [nextRotationDate: baseDate.toString()]
+                    }
+
+                    String rotationUsageKey = questionUsageValue
+                    rotationData[rotationUsageKey] = createRotationData(rotationUsageKey, (units ?: []) as String[], auditOccurrenceMap)
+                    logger.setInfoMessage("L5 strict create: rotation data prepared for usage=${rotationUsageKey} (no initial Audit created)")
+
+                    continue
+                }
+
+
                 // create the Audit issue
                 def validation = validateCreate(auditParams, "Failed to validate Audit creation for $questionUsageValue")
                 def result = create(validation, "Failed to create Audit issue for $questionUsageValue")
@@ -220,6 +260,7 @@ public class AuditHandlerBase {
                 //audit.setAuditType(Audit.PLANNED)
                 audit.commitIssueUpdate(EventDispatchOption.DO_NOT_DISPATCH)
                 recordCreatedIssue(result.issue.key)
+                createdInitialCount++
 
                 // target end date
                 LocalDate targetEndDate;

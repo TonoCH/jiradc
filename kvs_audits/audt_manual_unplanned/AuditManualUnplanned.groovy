@@ -106,6 +106,11 @@ class AuditManualUnplanned {
             return
         }
 
+        // SET AUDIT ID
+        audit.setAuditId()
+        audit.commitIssueUpdate()
+        logger.setInfoMessage("Unplanned Audit ${auditIssue.key}: Audit_ID set.")
+
         boolean isL2 = (level == CustomFieldsConstants.AUDIT_LEVEL_2)
         boolean isL3 = (level == CustomFieldsConstants.AUDIT_LEVEL_3)
         boolean isL4 = (level == CustomFieldsConstants.AUDIT_LEVEL_4)
