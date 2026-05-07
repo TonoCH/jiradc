@@ -47,7 +47,10 @@ class AuditLevel5Handler extends AuditHandlerBase {
             List<String> derived = []
             candidates.each { u ->
                 String[] parts = u.split('_')
-                boolean hasAB = (parts.size() > 2)
+                //boolean hasAB = (parts.size() > 2)
+                //boolean hasAB = (u ==~ /.+_(A|B)_Level_5$/)
+                boolean hasAB = parseSubAreaLetterOrNull(u) != null
+
 
                 if (hasAB) {
                     derived << u
