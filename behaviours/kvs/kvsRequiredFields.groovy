@@ -27,6 +27,7 @@ FormField auditTypeF  = getFieldByName(Audit.AUDIT_TYPE_FIELD_NAME)
 FormField questionsF  = getFieldByName(Audit.QUESTIONS_FIELD_NAME)
 FormField questionsFa  = getFieldByName(Audit.FUNCTIONAL_AREA_FIELD_NAME)
 FormField questionsWp  = getFieldByName(Audit.WORKPLACES_FIELD_NAME)
+FormField questionsUsages  = getFieldByName(AuditPreparation.QUESTON_USAGE_FIELD_NAME)
 
 final String AUDIT_ISSUE_TYPE_ID = "12700"  
 String issueTypeId = optVal(issueTypeF?.getValue())
@@ -38,6 +39,7 @@ if (!eq(issueTypeId, AUDIT_ISSUE_TYPE_ID)) {
 String levelVal      = optVal(levelF?.getValue())?.replace(" ", "_") 
 String auditTypeVal  = optVal(auditTypeF?.getValue())
 boolean isManual     = eq(auditTypeVal, Audit.MANUAL)
+boolean isUnplanned     = eq(auditTypeVal, Audit.UNPLANNED)
 
 // --- core rules ---
 switch (levelVal) {
@@ -46,6 +48,8 @@ switch (levelVal) {
         questionsF.setRequired(isManual)
         questionsFa.setHidden(false)
         questionsWp.setHidden(false)
+        //questionsUsages.setRequired(isUnplanned)
+
         if (!isManual) { questionsF.setFormValue(null) }
         break
 
@@ -53,12 +57,14 @@ switch (levelVal) {
         questionsF.setHidden(!isManual)
         questionsF.setRequired(isManual)
         questionsWp.setHidden(false)
+        //questionsUsages.setRequired(false)
         if (!isManual) { questionsF.setFormValue(null) }
         break
 
     case "Level_2":
         questionsF.setHidden(!isManual)
         questionsF.setRequired(isManual)
+        //questionsUsages.setRequired(false)
         if (!isManual) { questionsF.setFormValue(null) }  
         break
 

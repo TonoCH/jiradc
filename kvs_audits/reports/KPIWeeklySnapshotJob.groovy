@@ -90,10 +90,13 @@ class KPIWeeklySnapshotJob {
     private final CustomFieldUtil cfUtil = new CustomFieldUtil()
 
     void execute() {
-        // Weekly scheduled run: always targets the current ISO week (Monday).
-        LocalDate monday = LocalDate.now(ZoneId.systemDefault())
+        // The job fires shortly after midnight on Monday of the NEW ISO week, so the
+        // data it sees reflects the state at end-of-Sunday of the PREVIOUS week.
+        // Label the snapshot as that just-closed week (Monday-of-previous-week as anchor).
+        LocalDate previousMonday = LocalDate.now(ZoneId.systemDefault())
                 .with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-        runForWeek(monday, null)
+                .minusWeeks(1)
+        runForWeek(previousMonday, null)
     }
 
     void runForWeek(LocalDate weekMonday, Collection<String> scopeFilter) {
@@ -241,8 +244,8 @@ class KPIWeeklySnapshotJob {
         IssueInputParameters ip = issueService.newIssueInputParameters()
         ip.setProjectId(projectId)
         ip.setIssueTypeId(issueTypeId)
-        ip.setSummary("Snapshot taken on Week ${weekNo} (${scopeKey})")
-        ip.setDescription("Auto weekly snapshot. scope=${scopeKey}, week=${weekNo}, calcVersion=${CALC_VERSION}")
+        ip.setSummary("Snapshot closing Week ${weekNo} (${scopeKey})")
+        ip.setDescription("Auto weekly snapshot — closes ISO week ${weekNo}. scope=${scopeKey}, calcVersion=${CALC_VERSION}")
 
         def validation = issueService.validateCreate(user, ip)
         if (!validation.valid) throw new IllegalStateException("Snapshot create validation failed: ${validation.errorCollection}")

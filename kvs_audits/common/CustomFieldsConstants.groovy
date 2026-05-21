@@ -23,6 +23,7 @@ class CustomFieldsConstants {
     static final String AUDIT = "Audit"
     static final String QUESTION = "Question"
     static final String MEASURE = "Measure"
+    static final String MANUAL_MEASURE = "Manual Measure"
     static final String KVS_SETTING = "KVS Setting"
     static final String WORKPLACE = " Workplace"
 

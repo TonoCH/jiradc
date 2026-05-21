@@ -473,4 +473,16 @@ class CommonHelper {
         }
     }
 
+    public void deleteIssue(ApplicationUser runAs, eventIssue, KVSLogger logger){
+        def issueService = ComponentAccessor.issueService
+
+        def validation = issueService.validateDelete(runAs, eventIssue.id)
+        if (validation.isValid()) {
+            issueService.delete(runAs, validation)
+        } else {
+            logger.setErrorMessage("Delete failed: ${validation.errorCollection}")
+        }
+
+    }
+
 }

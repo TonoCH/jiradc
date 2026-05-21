@@ -60,15 +60,17 @@ kvsChartsData(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
             scopeIssueKey = pcIssue.key
         }
 
-        // ---- date window (ISO week; start on Monday of (today - weeks + 1))
+        // ---- date window (ISO week)
+        // Snapshots are produced on Mon morning of the new week and labeled with the
         def today = LocalDate.now(ZoneId.systemDefault())
         def currentMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        def start = currentMonday.minusWeeks(weeks - 1)
+        def windowEnd = currentMonday.minusWeeks(1)
+        def start = windowEnd.minusWeeks(weeks - 1)
 
         // ---- build list of Mondays we want to show (oldest -> newest)
         List<LocalDate> weekMondays = []
         LocalDate m = start
-        while (!m.isAfter(currentMonday)) {
+        while (!m.isAfter(windowEnd)) {
             weekMondays << m
             m = m.plusWeeks(1)
         }
@@ -296,7 +298,7 @@ kvsChartsData(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
                 pcKey           : pcKey,
                 scopeIssueKey   : scopeIssueKey,
                 from            : start.toString(),
-                to              : currentMonday.plusDays(6).toString(),
+                to              : windowEnd.plusDays(6).toString(),
                 weeksRequested  : weeks,
                 dataSource      : [
                         anySnapshot : anySnapshotUsed,

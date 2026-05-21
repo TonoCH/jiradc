@@ -78,4 +78,8 @@ class AuditScheduler {
         return reconciledAuditors ? reconciledAuditors[aIndex] : null
     }
 
+    protected String getJsonObjectFasOrWorkplaces(def usageObj){
+        return usageObj.fas != null ? usageObj.fas : usageObj.workplaces;
+    }
+
 }

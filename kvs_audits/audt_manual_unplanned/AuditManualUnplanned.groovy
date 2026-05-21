@@ -137,8 +137,8 @@ class AuditManualUnplanned {
         CommonHelper helper = new CommonHelper()
         int generated = 0
 
-        if (isL4) {
-            List<String> usages = helper.buildQuestionUsageKeys(profitCenter, functionalArea, level) ?: []
+        if (isL4) { //disable question creation, move it to workflow todo - > in progress step
+            /*List<String> usages = helper.buildQuestionUsageKeys(profitCenter, functionalArea, level) ?: []
             if (usages.isEmpty()) {
                 logger.setErrorMessage("Unplanned Audit ${auditIssue.key}: no Question Usage derived for Level 4.")
                 return
@@ -147,7 +147,9 @@ class AuditManualUnplanned {
                 helper.createQuestionsIssues(usage, auditIssue, currentUser?.name, null)
                 logger.setInfoMessage("Unplanned Audit ${auditIssue.key}: created questions for Question Usage '${usage}'.")
                 generated++
-            }
+            }*/
+            logger.setInfoMessage("Unplanned Audit for issue ${auditIssue.key}: For LEVEL 4 question generated will be on workflow part.")
+            return;
         } else {
             // L2 and L3
             String usage = helper.buildQuestionUsage(profitCenter, functionalArea, level)

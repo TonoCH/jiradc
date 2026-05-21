@@ -5,6 +5,7 @@ import com.atlassian.jira.issue.MutableIssue
 import kvs_audits.audit2.AuditLevel2Handler
 import kvs_audits.audt_manual_unplanned.AuditManualUnplanned
 import kvs_audits.common.CustomFieldsConstants
+import kvs_audits.common.ManualMeasure
 import utils.MyBaseUtil;
 import kvs_audits.audit3.AuditLevel3Handler;
 import kvs_audits.audit4.AuditLevel4Handler;
@@ -88,6 +89,21 @@ else if (issue.issueType.name == CustomFieldsConstants.AUDIT) {
     
     new AuditManualUnplanned().handleIssueCreated(issue)
 }
+else if (issue.issueType.name == CustomFieldsConstants.MANUAL_MEASURE) {
+
+    logger.setInfoMessage("*************************************************************************************");
+    logger.setInfoMessage("START process of generating ${CustomFieldsConstants.MANUAL_MEASURE} from issue :" + issue.key + "+");
+    logger.setInfoMessage("*************************************************************************************+");
+    logger.setInfoMessage("Check all fields names....")
+
+    //ALL FIELDS IS CORRECT?
+    myBaseUtil.validateFieldsNamesExist(AuditPreparation.AUDIT_PREPARATION_CUSTOM_FIELD_NAMES)
+    myBaseUtil.validateFieldsNamesExist(Question.QUESTION_CUSTOM_FIELD_NAMES)
+    logger.setInfoMessage("FIELDS CHECKED BUT NOT ALL")
+
+    new ManualMeasure().buildNew(issue)
+}
+
 else {
     logger.setInfoMessage("Issue type ${issue.issueType.name} is not handled by this listener. Skipping.")
 }

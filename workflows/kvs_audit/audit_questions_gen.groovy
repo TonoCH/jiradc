@@ -21,7 +21,6 @@ import com.atlassian.jira.component.ComponentAccessor
 CommonHelper commonHelper = new CommonHelper();
 KVSLogger logger = new KVSLogger()
 def audit = new Audit(issue)
-def payloadCf = CustomFieldsConstants.getCustomFieldByName(Audit.KVS_GENERATION_PAYLOAD_FIELD_NAME)
 def fieldData = new MyBaseUtil().getCustomFieldValue(audit.getIssue(), Audit.KVS_GENERATION_PAYLOAD_FIELD_NAME)
 
 if (!issue || !CustomFieldsConstants.AUDIT.equalsIgnoreCase(issue.issueType?.name)) {
@@ -29,12 +28,48 @@ if (!issue || !CustomFieldsConstants.AUDIT.equalsIgnoreCase(issue.issueType?.nam
     return true
 }
 
-if (!fieldData) {
-    def pc = audit.getProfitCenter()
-    def fa = audit.getFunctionalArea()
-    def level = audit.getAuditLevel()
+def pc = audit.getProfitCenter()
+def fa = audit.getFunctionalArea()
+def level = audit.getAuditLevel()
+def loggedUserName = ComponentAccessor.jiraAuthenticationContext.loggedInUser?.name
 
+def auditTypeValue = audit.getAuditType()
+if(!auditTypeValue){
+    logger.setInfoMessage("Audit is ${auditTypeValue ?: 'EMPTY'}, do nothing here.")
+    return
+}
+
+// region DISABLE GENERATON FOR MANUAL
+if (auditTypeValue in [Audit.MANUAL]) {
+    logger.setInfoMessage("Audit is ${Audit.MANUAL}, do nothing here.")
+    return
+}
+//endregion
+
+// region HANDLE UNPLANNED AUDITS
+if(auditTypeValue in [Audit.UNPLANNED]) {
+    CommonHelper helper = new CommonHelper()
+    int generated = 0
+    List<String> usages = helper.buildQuestionUsageKeys(pc, fa, level) ?: []
+    if (!usages || usages.isEmpty()) {
+        logger.setErrorMessage("Unplanned Audit ${audit.getIssue().key}: no Question Usage derived for Level 4.")
+        return
+    }
+    usages.each { usage ->
+        helper.createQuestionsIssues(usage, audit.getIssue(), loggedUserName, null)
+        logger.setInfoMessage("Unplanned Audit ${audit.getIssue().key}: created questions for Question Usage '${usage}'.")
+        generated++
+    }
+    return
+}
+// endregion
+
+if (!fieldData) {
     List<String> usageKeys = commonHelper.buildQuestionUsageKeys(pc, fa, level)
+    if (!usageKeys || usageKeys.isEmpty()) {
+        logger.setErrorMessage("${audit.getIssue().key}: no Question Usage.")
+        return
+    }
     fieldData = JsonOutput.toJson([usageKeys: usageKeys, specialDue: [], skip: false])
 }
 
@@ -44,7 +79,7 @@ if (data.skip == true) {
     return
 }
 
-def assignee = issue.assignee?.name ?: ComponentAccessor.jiraAuthenticationContext.loggedInUser?.name
+def assignee = issue.assignee?.name ?: loggedUserName
 int total = 0
 
 // Generate questions
@@ -54,8 +89,9 @@ int total = 0
 }
 
 // Clear payload to avoid duplicates
+def payloadCf = CustomFieldsConstants.getCustomFieldByName(Audit.KVS_GENERATION_PAYLOAD_FIELD_NAME)
 new MyBaseUtil().setCustomFieldValue(issue, payloadCf, null)
-logger.setInfoMessage("Generated questions (${total}) usages for ${issue.key} on workflow ehen goest to step In Progress.")
+logger.setInfoMessage("Generated questions (${total}) usages for ${issue.key} on workflow when goest to step In Progress.")
 
 //region check if question was generated before we cen disable multiple generation when todo - prograse
 /*try {
