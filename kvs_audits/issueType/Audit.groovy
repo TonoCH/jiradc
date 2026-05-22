@@ -17,6 +17,17 @@ import com.atlassian.jira.event.type.EventDispatchOption
  */
 public class Audit extends BaseIssue{
 
+    public static final CustomField PROFIT_CENTER_FIELD          = CustomFieldUtil.getCustomFieldBy(15901L) // Single Issue Picker
+    public static final CustomField FUNCTIONAL_AREA_FIELD        = CustomFieldUtil.getCustomFieldBy(17504L) // Single Issue Picker
+    public static final CustomField WORKPLACES_FIELD             = CustomFieldUtil.getCustomFieldBy(17514L) // Multi Issue Picker
+    public static final CustomField QUESTIONS_FIELD              = CustomFieldUtil.getCustomFieldBy(17515L) // Multi Issue Picker
+    public static final CustomField AUDIT_ID_FIELD               = CustomFieldUtil.getCustomFieldBy(17517L) // Text Field
+    public static final CustomField TARGET_END_FIELD             = CustomFieldUtil.getCustomFieldBy(10701L)
+    public static final CustomField AUDIT_TYPE_FIELD             = CustomFieldUtil.getCustomFieldBy(17518L) // Select List (single choice)
+    public static final CustomField AUDIT_DESCRIPTION_FIELD      = CustomFieldUtil.getCustomFieldBy(17700L) // Text Field (multi-line)
+    public static final CustomField KVS_GENERATION_PAYLOAD_FIELD = CustomFieldUtil.getCustomFieldBy(17702L) // Text Field (multi-line)
+
+    //region OLD need to be replaced
     public static final String PROFIT_CENTER_FIELD_NAME = "Profit Center" //Single Issue Picker
     public static final String FUNCTIONAL_AREA_FIELD_NAME = "Functional Area" //Single Issue Picker
     public static final String WORKPLACES_FIELD_NAME = "Workplaces" //Multiple Issue Picker
@@ -33,6 +44,7 @@ public class Audit extends BaseIssue{
     public static final String AUDIT_TYPE_FIELD_NAME = "Audit Type"
     public static final String AUDIT_DESCRIPTION_FIELD_NAME = "Audit Description"
     public static final String KVS_GENERATION_PAYLOAD_FIELD_NAME = "KVS Generation Payload"
+    //endregion
 
     public static final String PLANNED = "Planned"
     public static final String UNPLANNED = "Unplanned"
@@ -124,19 +136,17 @@ public class Audit extends BaseIssue{
             payload = "{*}PC={*}${pcKey} ${pcName}\n{*}FA={*}${faKey} ${faName}\n{*}Audit Level={*}${getAuditLevel()}"
         }
 
-        def cf = CustomFieldUtil.getCustomFieldByName(AUDIT_DESCRIPTION_FIELD_NAME)
-        if (!cf) {
-            throw new IllegalArgumentException("Custom field not found: ${AUDIT_DESCRIPTION_FIELD_NAME}")
-        }
+        if (AUDIT_DESCRIPTION_FIELD == null)
+            throw new IllegalStateException("Custom field AUDIT_DESCRIPTION_FIELD not initialised.")
 
-        String current = (String) myBaseUtil.getCustomFieldValue(issue, AUDIT_DESCRIPTION_FIELD_NAME)
+        String current = (String) issue.getCustomFieldValue(AUDIT_DESCRIPTION_FIELD)
         if (current?.trim() == payload) {
             logger.setInfoMessage("Audit description unchanged on ${issue.key}; skipping update.")
             return
         }
 
         // Persist and dispatch update
-        issue.setCustomFieldValue(cf, payload)
+        issue.setCustomFieldValue(AUDIT_DESCRIPTION_FIELD, payload)
         commitIssueUpdate()
         logger.setInfoMessage("Audit description updated on ${issue.key} -> ${payload}")
     }
@@ -150,27 +160,33 @@ public class Audit extends BaseIssue{
     }
 
     Issue getProfitCenter() {
-        customFieldUtil.getCustomFieldValueFromIssuePicker(issue, PROFIT_CENTER_FIELD_NAME) as Issue
+        //customFieldUtil.getCustomFieldValueFromIssuePicker(issue, PROFIT_CENTER_FIELD_NAME) as Issue
+        issue.getCustomFieldValue(PROFIT_CENTER_FIELD)   as Issue
     }
 
     Issue getFunctionalArea() {
-        customFieldUtil.getCustomFieldValueFromIssuePicker(issue, FUNCTIONAL_AREA_FIELD_NAME) as Issue
+        //customFieldUtil.getCustomFieldValueFromIssuePicker(issue, FUNCTIONAL_AREA_FIELD_NAME) as Issue
+        issue.getCustomFieldValue(FUNCTIONAL_AREA_FIELD) as Issue
     }
 
     List<Issue> getWorkplaces() {
-        customFieldUtil.getCustomFieldValueFromIssuePicker(issue, WORKPLACES_FIELD_NAME) as List<Issue>
+        //customFieldUtil.getCustomFieldValueFromIssuePicker(issue, WORKPLACES_FIELD_NAME) as List<Issue>
+        issue.getCustomFieldValue(WORKPLACES_FIELD)      as List<Issue>
     }
 
     List<Issue> getQuestions() {
-        customFieldUtil.getCustomFieldValueFromIssuePicker(issue, QUESTIONS_FIELD_NAME) as List<Issue>
+        //customFieldUtil.getCustomFieldValueFromIssuePicker(issue, QUESTIONS_FIELD_NAME) as List<Issue>
+        issue.getCustomFieldValue(QUESTIONS_FIELD)       as List<Issue>
     }
 
     String getAuditLevel() {
-        return myBaseUtil.getCustomFieldValue(issue, AuditPreparation.AUDIT_LEVEL_FIELD_NAME)
+        //return myBaseUtil.getCustomFieldValue(issue, AuditPreparation.AUDIT_LEVEL_FIELD_NAME)
+        return myBaseUtil.getCustomFieldValueById(issue, AuditPreparation.AUDIT_LEVEL_FIELD.id)
     }
 
     Double getAuditId() {
-        def value = myBaseUtil.getCustomFieldValue(issue, AUDIT_ID_FIELD_NAME);
+        //def value = myBaseUtil.getCustomFieldValue(issue, AUDIT_ID_FIELD_NAME);
+        def value = issue.getCustomFieldValue(AUDIT_ID_FIELD)
         if (value != null) {
             return value instanceof Number ? value.toDouble() : value.toString().toDouble()
         }
@@ -179,10 +195,12 @@ public class Audit extends BaseIssue{
     }
 
     String getAuditType(){
-        return myBaseUtil.getCustomFieldValue(issue, AUDIT_TYPE_FIELD_NAME)
+        return (String) issue.getCustomFieldValue(AUDIT_TYPE_FIELD)
+        //return myBaseUtil.getCustomFieldValue(issue, AUDIT_TYPE_FIELD_NAME)
     }
 
     def getDate_target_end() {
-        return myBaseUtil.getCustomFieldValue(issue, TARGET_END_FIELD_NAME)
+        return issue.getCustomFieldValue(TARGET_END_FIELD)
+        //return myBaseUtil.getCustomFieldValue(issue, TARGET_END_FIELD_NAME)
     }
 }

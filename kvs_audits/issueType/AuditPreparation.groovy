@@ -2,6 +2,8 @@ package kvs_audits.issueType
 
 
 import com.atlassian.jira.issue.Issue
+import com.atlassian.jira.issue.fields.CustomField
+import utils.CustomFieldUtil
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -36,6 +38,8 @@ public class AuditPreparation extends BaseIssue{
     static final String PROFIT_CENTER_FIELD_NAME = "Profit Center" //Single Issue Picker
     static final String TARGET_START_FIELD_NAME = "Target start"
     static final String KVS_KPI_JSON_FIELD_NAME = "KVS kpi json"
+
+    public static final CustomField AUDIT_LEVEL_FIELD             = CustomFieldUtil.getCustomFieldBy(17501L) // Select List (single choice)
 
     private String auditLevel,
                    abbreviation,

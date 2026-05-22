@@ -15,6 +15,12 @@ class CustomFieldUtil {
         return null
     }
 
+    static CustomField getCustomFieldBy(String id) {
+        // accepts both "customfield_15901" and "15901"
+        def normalized = id?.startsWith("customfield_") ? id : "customfield_${id}"
+        return ComponentAccessor.customFieldManager.getCustomFieldObject(normalized)
+    }
+
     //Select List (multiple choices)
     /*public List<String> getFieldValue_MultiSelectSearcher(Object fieldValue){
         if (fieldValue instanceof List) {
