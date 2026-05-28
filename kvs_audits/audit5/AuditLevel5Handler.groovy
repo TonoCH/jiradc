@@ -23,6 +23,11 @@ class AuditLevel5Handler extends AuditHandlerBase {
         super(auditPrepIssue, auditLevel, kvsProjectKey);
     }
 
+    // FIX: remember which usages received an initial audit so initializeRotationData
+    // can advance cursors only for those usages (pool-only usages must stay at 0).
+    private List<String> orderedUsagesForInit = []
+    private int maxInitialAuditsForInit = 0
+
     public void createAudit(List<String> questionUsages) {
 
         List<String> seed = (questionUsages ?: []).findAll { it?.trim() }
@@ -117,6 +122,10 @@ class AuditLevel5Handler extends AuditHandlerBase {
         List<String> rest = (questionUsages - uniquePcUsagesInOrder)
         List<String> orderedUsages = uniquePcUsagesInOrder + rest
 
+        // FIX: snapshot for initializeRotationData
+        this.orderedUsagesForInit = orderedUsages
+        this.maxInitialAuditsForInit = maxInitialAudits
+
         executeCreateAudit(
                 orderedUsages,
                 { pc, fa -> jqlSearcher.getSubAreas(pc) },
@@ -128,35 +137,48 @@ class AuditLevel5Handler extends AuditHandlerBase {
     @Override
     protected void initializeRotationData(Map<String, Map<String, Object>> questions_usages, int initialTurnIndex = 0) {
 
-        //CHANGES 8.8.25 no longer persist the cross‑auditor pool in the rotation JSON
         LocalDate startDate = Optional.ofNullable(auditPreparationIssue.getDate_target_start())
                 .map { ts ->
                     ts instanceof Timestamp ? ts.toLocalDate() : ts.toLocalDate()
                 }
                 .orElse(LocalDate.now())
-        def rotation =
-                [
-                        questions_usages  : questions_usages,
-                        usageTurnIndex    : initialTurnIndex,
-                        globalAuditorIndex: 0
-                ]
-        //def external = auditPreparationIssue.getExternalAuditors()
+
+        // FIX: derive which usages actually received an initial audit
+        // (first maxInitialAudits items in orderedUsages — see L5 STRICT mode).
+        Set<String> usagesWithInitial = (orderedUsagesForInit
+                ? orderedUsagesForInit.take(Math.max(0, maxInitialAuditsForInit))
+                : []) as Set
+
+        // FIX: globalAuditorIndex must start past the auditors already used by initial audits,
+        // so the first rotation tick picks the NEXT auditor instead of repeating auditors[0].
+        List<String> auditors = auditPreparationIssue.getAuditors() ?: []
+        int auditorCount = auditors ? auditors.size() : 1
+        int initialGlobalAuditorIndex = (auditorCount > 0)
+                ? (usagesWithInitial.size() % auditorCount)
+                : 0
+
+        def rotation = [
+                questions_usages  : questions_usages,
+                usageTurnIndex    : initialTurnIndex,
+                globalAuditorIndex: initialGlobalAuditorIndex
+        ]
 
         questions_usages.each { key, data ->
-            //data.subAreas = data.workplaces          // rename
-            //data.currentSubAreaIndex = 0
             data.workplaces = data.workplaces
-            data.currentWorkplaceIndex = 0
-            data.currentAuditorIndex = 0
-            //data.crossAuditors         = external
+
+            // FIX: usage that got an initial audit already consumed workplaces[0],
+            //      so start its workplace cursor at 1; pool-only usages start at 0.
+            boolean hadInitial = usagesWithInitial.contains(key as String)
+            List wps = (data.workplaces as List) ?: []
+            int wpSize = wps.size()
+            data.currentWorkplaceIndex   = (hadInitial && wpSize > 0) ? (1 % wpSize) : 0
+            data.currentAuditorIndex     = hadInitial ? 1 : 0   // not used by L5 scheduler, kept for JSON consistency
             data.currentCrossAuditorIndex = 0
-            data.rotationCount = 0
-            data.crossAuditHistory = []
+            data.rotationCount            = 0
+            data.crossAuditHistory        = []
 
-            logger.setInfoMessage(">> [INIT] ${key}: currentWorkplaceIndex=${data.currentWorkplaceIndex}, workplaces=${data.workplaces}")
-            logger.setInfoMessage(">> [INIT] ${key}: currentAuditorIndex=${data.currentAuditorIndex}, auditors=${data.auditors}")
-
-            //data.remove('workplaces')
+            logger.setInfoMessage(">> [INIT] ${key}: hadInitial=${hadInitial}, currentWorkplaceIndex=${data.currentWorkplaceIndex}, workplaces=${data.workplaces}")
+            logger.setInfoMessage(">> [INIT] ${key}: globalAuditorIndex=${initialGlobalAuditorIndex}, auditors=${auditors}")
         }
 
         updateRotationData(JsonOutput.toJson(rotation))

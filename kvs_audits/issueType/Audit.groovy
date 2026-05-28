@@ -1,6 +1,7 @@
 package kvs_audits.issueType
 
 import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.customfields.option.Option
 import kvs_audits.common.CustomFieldsConstants;
 import com.atlassian.jira.issue.Issue;
 import com.atlassian.jira.issue.IssueInputParametersImpl
@@ -17,15 +18,15 @@ import com.atlassian.jira.event.type.EventDispatchOption
  */
 public class Audit extends BaseIssue{
 
-    public static final CustomField PROFIT_CENTER_FIELD          = CustomFieldUtil.getCustomFieldBy(15901L) // Single Issue Picker
-    public static final CustomField FUNCTIONAL_AREA_FIELD        = CustomFieldUtil.getCustomFieldBy(17504L) // Single Issue Picker
-    public static final CustomField WORKPLACES_FIELD             = CustomFieldUtil.getCustomFieldBy(17514L) // Multi Issue Picker
-    public static final CustomField QUESTIONS_FIELD              = CustomFieldUtil.getCustomFieldBy(17515L) // Multi Issue Picker
-    public static final CustomField AUDIT_ID_FIELD               = CustomFieldUtil.getCustomFieldBy(17517L) // Text Field
-    public static final CustomField TARGET_END_FIELD             = CustomFieldUtil.getCustomFieldBy(10701L)
-    public static final CustomField AUDIT_TYPE_FIELD             = CustomFieldUtil.getCustomFieldBy(17518L) // Select List (single choice)
-    public static final CustomField AUDIT_DESCRIPTION_FIELD      = CustomFieldUtil.getCustomFieldBy(17700L) // Text Field (multi-line)
-    public static final CustomField KVS_GENERATION_PAYLOAD_FIELD = CustomFieldUtil.getCustomFieldBy(17702L) // Text Field (multi-line)
+    public static final CustomField PROFIT_CENTER_FIELD          = CustomFieldUtil.getCustomFieldBy("15901") // Single Issue Picker
+    public static final CustomField FUNCTIONAL_AREA_FIELD        = CustomFieldUtil.getCustomFieldBy("17504") // Single Issue Picker
+    public static final CustomField WORKPLACES_FIELD             = CustomFieldUtil.getCustomFieldBy("17514") // Multi Issue Picker
+    public static final CustomField QUESTIONS_FIELD              = CustomFieldUtil.getCustomFieldBy("17515") // Multi Issue Picker
+    public static final CustomField AUDIT_ID_FIELD               = CustomFieldUtil.getCustomFieldBy("17517") // Text Field
+    public static final CustomField TARGET_END_FIELD             = CustomFieldUtil.getCustomFieldBy("10701")
+    public static final CustomField AUDIT_TYPE_FIELD             = CustomFieldUtil.getCustomFieldBy("17518") // Select List (single choice)
+    public static final CustomField AUDIT_DESCRIPTION_FIELD      = CustomFieldUtil.getCustomFieldBy("17700") // Text Field (multi-line)
+    public static final CustomField KVS_GENERATION_PAYLOAD_FIELD = CustomFieldUtil.getCustomFieldBy("17702") // Text Field (multi-line)
 
     //region OLD need to be replaced
     public static final String PROFIT_CENTER_FIELD_NAME = "Profit Center" //Single Issue Picker
@@ -70,7 +71,7 @@ public class Audit extends BaseIssue{
         //.addCustomFieldValue(TARGET_END_FIELD_NAME, targetEndDate)
         //.setReporterId(reporterName)
                 .addCustomFieldValue(CustomFieldsConstants.PARENT_LINK_FIELD_ID, auditPreparationIssue.getIssue().key)
-                .addCustomFieldValue(PROFIT_CENTER_FIELD_ID, profitCenterKey)
+                .addCustomFieldValue(PROFIT_CENTER_FIELD.getId(), profitCenterKey)
         //.addCustomFieldValue(AUDIT_ID_FIELD_ID, profitCenterKey);
 
         if(functionalAreaKey != null)
@@ -80,7 +81,14 @@ public class Audit extends BaseIssue{
     }
 
     void setAuditId() {
-        if (issue == null)
+        if (issue == null) throw new NullPointerException("Get issue key on null Audit.")
+        def auditId = myBaseUtil.getIssueKeyNumberPart(issue)
+        if (auditId == null) throw new IllegalStateException("Could not extract audit ID from parent issue key.")
+        if (AUDIT_ID_FIELD == null) throw new IllegalStateException("AUDIT_ID_FIELD not initialised.")
+
+        logger.setInfoMessage("Info auditId set for audit is: $auditId")
+        issue.setCustomFieldValue(AUDIT_ID_FIELD, auditId)
+        /*if (issue == null)
             throw new NullPointerException("Get issue key on null Audit.");
 
         def auditId = myBaseUtil.getIssueKeyNumberPart(issue)
@@ -92,20 +100,23 @@ public class Audit extends BaseIssue{
             throw new IllegalArgumentException("Custom field not found: ${AUDIT_ID_FIELD_ID}")
 
         logger.setInfoMessage("Info auditId set for audit is:"+ auditId)
-        issue.setCustomFieldValue(customField, auditId)
+        issue.setCustomFieldValue(customField, auditId)*/
 
         //ComponentAccessor.issueManager.updateIssue(loggedInUser, issue, EventDispatchOption.ISSUE_UPDATED, false)
     }
 
     void setAuditType(String newAuditType) {
-        if (issue == null)
+        if (issue == null) throw new NullPointerException("Get issue key on null Audit.")
+        if (AUDIT_TYPE_FIELD == null) throw new IllegalStateException("AUDIT_TYPE_FIELD not initialised.")
+        issue.setCustomFieldValue(AUDIT_TYPE_FIELD, newAuditType)
+        /*if (issue == null)
             throw new NullPointerException("Get issue key on null Audit.");
 
         CustomField customField = CustomFieldUtil.getCustomFieldByName(AUDIT_TYPE_FIELD_NAME)
         if (customField == null)
             throw new IllegalArgumentException("Custom field not found: ${AUDIT_TYPE_FIELD_NAME}")
 
-        issue.setCustomFieldValue(customField, newAuditType)
+        issue.setCustomFieldValue(customField, newAuditType)*/
         //ComponentAccessor.issueManager.updateIssue(loggedInUser, issue, EventDispatchOption.ISSUE_UPDATED, false)
     }
 
@@ -194,9 +205,13 @@ public class Audit extends BaseIssue{
         return 0;
     }
 
-    String getAuditType(){
+    /*String getAuditType(){
         return (String) issue.getCustomFieldValue(AUDIT_TYPE_FIELD)
         //return myBaseUtil.getCustomFieldValue(issue, AUDIT_TYPE_FIELD_NAME)
+    }*/
+    String getAuditType() {
+        def v = issue.getCustomFieldValue(AUDIT_TYPE_FIELD)
+        return v instanceof Option ? v.value : v?.toString()
     }
 
     def getDate_target_end() {

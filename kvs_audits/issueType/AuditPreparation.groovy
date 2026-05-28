@@ -39,7 +39,7 @@ public class AuditPreparation extends BaseIssue{
     static final String TARGET_START_FIELD_NAME = "Target start"
     static final String KVS_KPI_JSON_FIELD_NAME = "KVS kpi json"
 
-    public static final CustomField AUDIT_LEVEL_FIELD             = CustomFieldUtil.getCustomFieldBy(17501L) // Select List (single choice)
+    public static final CustomField AUDIT_LEVEL_FIELD             = CustomFieldUtil.getCustomFieldBy("17501") // Select List (single choice)
 
     private String auditLevel,
                    abbreviation,
