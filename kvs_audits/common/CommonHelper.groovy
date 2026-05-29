@@ -204,7 +204,7 @@ class CommonHelper {
     }
 
     public void updateTargetEndDate(Issue issue, LocalDate targetEndDate) {
-        CustomField targetEndField = customFieldUtil.getCustomFieldByName(Audit.TARGET_END_FIELD_NAME);
+        CustomField targetEndField = Audit.TARGET_END_FIELD;//customFieldUtil.getCustomFieldByName(Audit.TARGET_END_FIELD_NAME);
 
         if (targetEndField) {
             Timestamp targetEndTimestamp = Timestamp.from(targetEndDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
@@ -212,7 +212,7 @@ class CommonHelper {
             logger.setInfoMessage("Updated targetEndDate on ${issue.key} to ${targetEndDate}");
             issueManager.updateIssue(loggedInUser, issue, EventDispatchOption.ISSUE_UPDATED, false);
         } else {
-            logger.setErrorMessage("Custom field '${Audit.TARGET_END_FIELD_NAME}' not found.");
+            logger.setErrorMessage("Custom field '${Audit.TARGET_END_FIELD.getFieldName()}' not found.");
         }
     }
 

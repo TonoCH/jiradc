@@ -18,8 +18,10 @@ import com.atlassian.jira.event.type.EventDispatchOption
  */
 public class Audit extends BaseIssue{
 
+    public static final String AUDIT_ISSUE_TYPE_ID = "12700";//TODO be careful please check
     public static final CustomField PROFIT_CENTER_FIELD          = CustomFieldUtil.getCustomFieldBy("15901") // Single Issue Picker
     public static final CustomField FUNCTIONAL_AREA_FIELD        = CustomFieldUtil.getCustomFieldBy("17504") // Single Issue Picker
+    public static final CustomField FUNCTIONAL_AREA_KEY_FIELD        = CustomFieldUtil.getCustomFieldBy("17505") //Select List (single choice)
     public static final CustomField WORKPLACES_FIELD             = CustomFieldUtil.getCustomFieldBy("17514") // Multi Issue Picker
     public static final CustomField QUESTIONS_FIELD              = CustomFieldUtil.getCustomFieldBy("17515") // Multi Issue Picker
     public static final CustomField AUDIT_ID_FIELD               = CustomFieldUtil.getCustomFieldBy("17517") // Text Field
@@ -34,13 +36,13 @@ public class Audit extends BaseIssue{
     public static final String WORKPLACES_FIELD_NAME = "Workplaces" //Multiple Issue Picker
     public static final String QUESTIONS_FIELD_NAME = "Questions" //Multiple Issue Picker
 
-    public static final String AUDIT_ISSUE_TYPE_ID = "12700";//TODO be careful please check
+
     public static final String PROFIT_CENTER_FIELD_ID = CustomFieldUtil.getCustomFieldByName(PROFIT_CENTER_FIELD_NAME)?.getId()// "customfield_15901";//TODO rename all staticly typed ids
     public static final String FUNCTIONAL_AREA_FIELD_ID = CustomFieldUtil.getCustomFieldByName(FUNCTIONAL_AREA_FIELD_NAME)?.getId()// "customfield_15909";
     public static final String WORKPLACES_FIELD_ID = CustomFieldUtil.getCustomFieldByName(WORKPLACES_FIELD_NAME)?.getId()// "customfield_15910"; // Multi Issue Picker for Workplaces
     public static final String FUNCTIONAL_AREA_KEY = "Functional Area Key"; //Select List (single choice)
     public static final String AUDIT_ID_FIELD_NAME = 'Audit_ID'; //Text Field (single-line)
-    public static final String AUDIT_ID_FIELD_ID = CustomFieldUtil.getCustomFieldByName(AUDIT_ID_FIELD_NAME)?.getId()
+    //public static final String AUDIT_ID_FIELD_ID = CustomFieldUtil.getCustomFieldByName(AUDIT_ID_FIELD_NAME)?.getId()
     public static final String TARGET_END_FIELD_NAME = "Target end"
     public static final String AUDIT_TYPE_FIELD_NAME = "Audit Type"
     public static final String AUDIT_DESCRIPTION_FIELD_NAME = "Audit Description"
@@ -75,7 +77,7 @@ public class Audit extends BaseIssue{
         //.addCustomFieldValue(AUDIT_ID_FIELD_ID, profitCenterKey);
 
         if(functionalAreaKey != null)
-            auditParams.addCustomFieldValue(FUNCTIONAL_AREA_FIELD_ID, functionalAreaKey)
+            auditParams.addCustomFieldValue(FUNCTIONAL_AREA_FIELD.getId(), functionalAreaKey)
 
         return auditParams;
     }

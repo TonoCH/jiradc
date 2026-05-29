@@ -59,7 +59,7 @@ public class JqlSearcher {
         String functionalAreaKey = usage[1] ?: null  // Second part, might be null
         if (functionalAreaKey != null) {
 
-            String jqlQuery = """ project = ${CustomFieldsConstants.PROJECT_KVS_PROFIT_CENTERS} AND resolution = Unresolved AND "${Audit.FUNCTIONAL_AREA_KEY}" = "${functionalAreaKey}"
+            String jqlQuery = """ project = ${CustomFieldsConstants.PROJECT_KVS_PROFIT_CENTERS} AND resolution = Unresolved AND cf[${Audit.FUNCTIONAL_AREA_KEY_FIELD.idAsLong}] = "${functionalAreaKey}"
             AND "${AuditPreparation.PROFIT_CENTER_FIELD_NAME}" = "${profitCenter.key}" """.stripIndent().trim();
 
             List<Issue> issues = myBaseUtil.findIssues(jqlQuery);

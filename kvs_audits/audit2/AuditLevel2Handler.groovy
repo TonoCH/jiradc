@@ -21,7 +21,7 @@ class AuditLevel2Handler extends AuditHandlerBase {
 
     public void createAudit(List<String> questionUsage) {
         // for Level2: rotate workplaces under each FA
-        executeCreateAudit(questionUsage, { pc, fa -> jqlSearcher.getWorkplaces(fa) }, Audit.WORKPLACES_FIELD_ID)
+        executeCreateAudit(questionUsage, { pc, fa -> jqlSearcher.getWorkplaces(fa) }, Audit.WORKPLACES_FIELD.getId())
     }
 
     //scheduled job call this
@@ -56,7 +56,7 @@ class AuditLevel2Handler extends AuditHandlerBase {
         //check workplaces:
         def workplacesKeys = jqlSearcher.getWorkplaces(functionalArea);
         if(workplacesKeys.contains(nextWorkplaceIssueKey)){
-            auditParams.addCustomFieldValue(Audit.WORKPLACES_FIELD_ID, [nextWorkplaceIssueKey] as String[])
+            auditParams.addCustomFieldValue(Audit.WORKPLACES_FIELD.getId(), [nextWorkplaceIssueKey] as String[])
             logger.setInfoMessage("Assigning the workplace '${nextWorkplaceIssueKey}' on initial Audit for usage=${questionUsageValue}")
         }
         else{

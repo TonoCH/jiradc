@@ -232,7 +232,8 @@ kvsChartsData(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
         // ---- SOURCE DATA DESCRIPTORS — one per chart / table, rendered in the UI
         String closedMeasuresLiveJql = "(${measuresJqlBase}) AND resolution != Unresolved AND resolutiondate >= \"${LocalDate.now().minusDays(30)}\" ORDER BY resolutiondate DESC"
         String openMeasuresLiveJql = "(${measuresJqlBase}) AND resolution = Unresolved ORDER BY created DESC"
-        String openAuditsLiveJql = "(${auditJqlBase}) AND resolution = Unresolved ORDER BY \"${Audit.TARGET_END_FIELD_NAME}\" ASC"
+        //String openAuditsLiveJql = "(${auditJqlBase}) AND resolution = Unresolved ORDER BY \"${Audit.TARGET_END_FIELD_NAME}\" ASC"
+        String openAuditsLiveJql = "(${auditJqlBase}) AND resolution = Unresolved ORDER BY cf[${Audit.TARGET_END_FIELD.idAsLong}] ASC"
 
         Map sources = [
                 overallGauge        : [
@@ -268,7 +269,8 @@ kvsChartsData(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
                 auditExecution      : [
                         type             : "jql",
                         description      : "Weekly audit execution. OPEN = audits targeted for that week still unresolved (Target end in week). CLOSED = audits resolved in that week (resolutiondate in week). RATE = closed / (open + closed).",
-                        jqlTemplateOpen  : "(" + auditJqlBase + ") AND resolution = Unresolved AND \"" + Audit.TARGET_END_FIELD_NAME + "\" >= [Monday] AND \"" + Audit.TARGET_END_FIELD_NAME + "\" < [next Monday]",
+                        //jqlTemplateOpen  : "(" + auditJqlBase + ") AND resolution = Unresolved AND \"" + Audit.TARGET_END_FIELD_NAME + "\" >= [Monday] AND \"" + Audit.TARGET_END_FIELD_NAME + "\" < [next Monday]",
+                        jqlTemplateOpen  : "(" + auditJqlBase + ") AND resolution = Unresolved AND cf[" + Audit.TARGET_END_FIELD.idAsLong + "] >= [Monday] AND cf[" + Audit.TARGET_END_FIELD.idAsLong + "] < [next Monday]",
                         jqlTemplateClosed: "(" + auditJqlBase + ") AND resolution != Unresolved AND resolutiondate >= [Monday] AND resolutiondate < [next Monday]"
                 ],
                 statusDonut         : [
@@ -449,7 +451,8 @@ Map computeAuditStatsOnTheFly(MyBaseUtil myBaseUtil, String auditJqlBase, LocalD
     int open = 0, closed = 0, created = 0
     try {
         open = myBaseUtil.findIssues(
-                """(${auditJqlBase}) AND resolution = Unresolved AND "${Audit.TARGET_END_FIELD_NAME}" >= "${ws}" AND "${Audit.TARGET_END_FIELD_NAME}" < "${weExcl}" """
+                // """(${auditJqlBase}) AND resolution = Unresolved AND "${Audit.TARGET_END_FIELD_NAME}" >= "${ws}" AND "${Audit.TARGET_END_FIELD_NAME}" < "${weExcl}" """
+                """(${auditJqlBase}) AND resolution = Unresolved AND cf[${Audit.TARGET_END_FIELD.idAsLong}] >= "${ws}" AND cf[${Audit.TARGET_END_FIELD.idAsLong}] < "${weExcl}" """
         ).size()
     } catch (Exception e) {}
     try {
@@ -553,7 +556,8 @@ Map measureToRow(Issue measure, boolean closed) {
 /** Live list of OPEN audits with Jira + CF fields. */
 List fetchOpenAudits(MyBaseUtil myBaseUtil, String auditJqlBase, int limit, Issue pcIssue, boolean isOverall) {
     if (!auditJqlBase) return []
-    String jql = "(${auditJqlBase}) AND resolution = Unresolved ORDER BY \"${Audit.TARGET_END_FIELD_NAME}\" ASC"
+    //String jql = "(${auditJqlBase}) AND resolution = Unresolved ORDER BY \"${Audit.TARGET_END_FIELD_NAME}\" ASC"
+    String jql = "(${auditJqlBase}) AND resolution = Unresolved ORDER BY cf[${Audit.TARGET_END_FIELD.idAsLong}] ASC"
     def issues = safeFindIssues(myBaseUtil, jql)
 
     return issues.take(limit).collect { Issue a -> auditToRow(a) }
@@ -566,7 +570,7 @@ Map auditToRow(Issue audit) {
     String targetEndStr = null
     Integer weekNo = null
     try {
-        def raw = myBase.getCustomFieldValue(audit, Audit.TARGET_END_FIELD_NAME)
+        def raw = myBase.getCustomFieldValue(audit, Audit.TARGET_END_FIELD.getFieldName())
         if (raw) {
             LocalDate ld
             if (raw instanceof java.sql.Timestamp) {
@@ -584,7 +588,7 @@ Map auditToRow(Issue audit) {
         }
     } catch (Exception e) {}
 
-    String auditId = asString(myBase.getCustomFieldValue(audit, Audit.AUDIT_ID_FIELD_NAME))
+    String auditId = asString(myBase.getCustomFieldValue(audit, Audit.AUDIT_ID_FIELD.getFieldName()))
     String auditLevel = asString(myBase.getCustomFieldValue(audit, AuditPreparation.AUDIT_LEVEL_FIELD_NAME))
     String auditType = asString(myBase.getCustomFieldValue(audit, Audit.AUDIT_TYPE_FIELD_NAME))
 

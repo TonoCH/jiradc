@@ -291,7 +291,8 @@ class KPIWeeklySnapshotJob {
         int open = 0, closed = 0, created = 0
         try {
             open = myBaseUtil.findIssues(
-                    """(${base}) AND resolution = Unresolved AND "${Audit.TARGET_END_FIELD_NAME}" >= "${ws}" AND "${Audit.TARGET_END_FIELD_NAME}" < "${weExcl}" """
+                    //"""(${base}) AND resolution = Unresolved AND "${Audit.TARGET_END_FIELD_NAME}" >= "${ws}" AND "${Audit.TARGET_END_FIELD_NAME}" < "${weExcl}" """
+                    """(${base}) AND resolution = Unresolved AND cf[${Audit.TARGET_END_FIELD.idAsLong}] >= "${ws}" AND cf[${Audit.TARGET_END_FIELD.idAsLong}] < "${weExcl}" """
             ).size()
         } catch (Exception e) {
             logger.setWarnMessage("Audit open-count JQL failed: ${e.message}")

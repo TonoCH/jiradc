@@ -129,7 +129,7 @@ class KVSPerformanceCalculator {
     LocalDate getAuditDate(Issue question) {
         Issue parentAudit = question.parentObject
         if (parentAudit) {
-            def raw = myBaseUtil.getCustomFieldValue(parentAudit, Audit.TARGET_END_FIELD_NAME)
+            def raw = myBaseUtil.getCustomFieldValue(parentAudit, Audit.TARGET_END_FIELD.getFieldName())
             if (raw) {
                 return raw instanceof Timestamp
                         ? raw.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()

@@ -31,12 +31,12 @@ ApplicationUser jiraBot = ComponentAccessor.getUserManager().getUserByName("jira
 
 //IF issue type AUDIT
 if (actualIssue?.issueType?.name == CustomFieldsConstants.AUDIT) {
-    def auditIdCf = CustomFieldsConstants.getCustomFieldByName(Audit.AUDIT_ID_FIELD_NAME)
+    def auditIdCf =Audit.AUDIT_ID_FIELD;// CustomFieldsConstants.getCustomFieldByName(Audit.AUDIT_ID_FIELD_NAME)
 
     if (event.eventTypeId == EventType.ISSUE_UPDATED_ID) {
         //region allow only jira.bot edit audit id
         if (!auditIdCf) {
-            log.warn("Audit listener: custom field '${Audit.AUDIT_ID_FIELD_NAME}' not found")
+            log.warn("Audit listener: custom field '${Audit.AUDIT_ID_FIELD.getFieldName()}' not found")
         } else {
             def auditIdChange = event?.changeLog?.getRelated("ChildChangeItem")?.find { ci ->
                 (ci.field as String) == auditIdCf.name

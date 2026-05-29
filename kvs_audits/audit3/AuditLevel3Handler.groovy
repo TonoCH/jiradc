@@ -53,7 +53,7 @@ class AuditLevel3Handler extends AuditHandlerBase {
         //logger.setWarnMessage("questionUsage is: "+$questionUsage)
 
         // for Level3: rotate across *all* FAs under the same profit center
-        executeCreateAudit(questionUsage, { pc, fa -> jqlSearcher.getFunctionalAreas(pc) }, Audit.FUNCTIONAL_AREA_FIELD_ID)
+        executeCreateAudit(questionUsage, { pc, fa -> jqlSearcher.getFunctionalAreas(pc) }, Audit.FUNCTIONAL_AREA_FIELD.getId())
     }
 
     public void rotateOneAudit(String questionUsageValue, def nextFaIssueKey, def nextAuditor, List<String> specialQuestionsDue, LocalDate rotationDay) {
@@ -82,7 +82,7 @@ class AuditLevel3Handler extends AuditHandlerBase {
         auditParams.addCustomFieldValue(CustomFieldsConstants.getCustomFieldByName(AuditPreparation.AUDIT_LEVEL_FIELD_NAME)?.id, auditLevelOptionId?.toString())
         auditParams.addCustomFieldValue(CustomFieldsConstants.getCustomFieldByName(AuditPreparation.TARGET_START_FIELD_NAME)?.id, [rotationDayString] as String[]);//auditPreparationIssue.getDate_targetStartAsDateTime())
         auditParams.addCustomFieldValue(CustomFieldsConstants.getCustomFieldByName(Audit.AUDIT_TYPE_FIELD_NAME)?.id, auditTypeOptionId?.toString())
-        auditParams.addCustomFieldValue(Audit.FUNCTIONAL_AREA_FIELD_ID, [rotatedFA.getKey()] as String[])
+        auditParams.addCustomFieldValue(Audit.FUNCTIONAL_AREA_FIELD.getId(), [rotatedFA.getKey()] as String[])
 
         def auditValidationResult = validateCreate(auditParams, "Failed to validate Audit creation for " + questionUsageValue)
         def auditResult = create(auditValidationResult, "Failed to create Audit issue for " + questionUsageValue)
