@@ -182,7 +182,7 @@ public class MyBaseUtil {
     }
 
     def getIssueByKey(issueKey){
-        return issueManager.getIssueByCurrentKey(issueKey)    
+        return issueManager.getIssueByCurrentKey(issueKey)
     }
 
     /*
@@ -196,16 +196,16 @@ public class MyBaseUtil {
 
     public void validateFieldsExist(def fieldsNamesConstantClass) {
         List<String> allFields = Arrays.stream(fieldsNamesConstantClass.getDeclaredFields())
-            .filter(field -> java.lang.reflect.Modifier.isStatic(field.getModifiers())) // Only static fields
-            .map(field -> {
-                try {
-                    field.setAccessible(true); // Ensure accessibility
-                    return (String) field.get(null); // Extract actual String value
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException("Error accessing field: " + field.getName(), e);
-            }
-            })
-            .collect(Collectors.toList());
+                .filter(field -> java.lang.reflect.Modifier.isStatic(field.getModifiers())) // Only static fields
+                .map(field -> {
+                    try {
+                        field.setAccessible(true); // Ensure accessibility
+                        return (String) field.get(null); // Extract actual String value
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException("Error accessing field: " + field.getName(), e);
+                    }
+                })
+                .collect(Collectors.toList());
 
         for (String fieldName : allFields) {
             if(fieldName == null || fieldName == "false")
@@ -228,12 +228,19 @@ public class MyBaseUtil {
         }
     }
 
+    public void validateCustomFieldsExist(List<CustomField> customFields) {
+        customFields.eachWithIndex { CustomField cf, int i ->
+            if (cf == null)
+                throw new RuntimeException("CustomField at index ${i} is null (not initialised — check the static field IDs)")
+        }
+    }
+
     public void validateFieldsIdsExist(List<String> fieldsIdsList) {
         for (String fieldId : fieldsIdsList) {
             if(fieldId == null || fieldId == "false")
                 continue;
-            
-            def customField = customFieldManager.getCustomFieldObject(fieldId)    
+
+            def customField = customFieldManager.getCustomFieldObject(fieldId)
             if(customField == null)
                 throw new RuntimeException("Field ID is null: " + fieldId);
         }

@@ -10,9 +10,11 @@ import utils.MyBaseUtil;
 import kvs_audits.audit3.AuditLevel3Handler;
 import kvs_audits.audit4.AuditLevel4Handler;
 import kvs_audits.audit5.AuditLevel5Handler;
+import kvs_audits.common.AuditMailer
 import utils.CustomFieldUtil;
 import kvs_audits.issueType.Question
 import kvs_audits.issueType.AuditPreparation
+import kvs_audits.issueType.Audit
 
 //ScriptRunnerImpl.getPlugin().clearCaches()
 //log.info("ScriptRunner cache cleared successfully!")
@@ -33,6 +35,7 @@ if (issue.issueType.name == CustomFieldsConstants.AUDIT_PREPARATION) {
     //ALL FIELDS IS CORRECT?
     myBaseUtil.validateFieldsNamesExist(AuditPreparation.AUDIT_PREPARATION_CUSTOM_FIELD_NAMES)
     myBaseUtil.validateFieldsNamesExist(Question.QUESTION_CUSTOM_FIELD_NAMES)
+    myBaseUtil.validateCustomFieldsExist(Audit.AUDIT_CUSTOM_FIELDS)
     logger.setInfoMessage("All fields names is correct")
 
     def auditLevel = myBaseUtil.getCustomFieldValue(issue, AuditPreparation.AUDIT_LEVEL_FIELD_NAME)
@@ -85,8 +88,9 @@ else if (issue.issueType.name == CustomFieldsConstants.AUDIT) {
     //ALL FIELDS IS CORRECT?
     myBaseUtil.validateFieldsNamesExist(AuditPreparation.AUDIT_PREPARATION_CUSTOM_FIELD_NAMES)
     myBaseUtil.validateFieldsNamesExist(Question.QUESTION_CUSTOM_FIELD_NAMES)
+    myBaseUtil.validateCustomFieldsExist(Audit.AUDIT_CUSTOM_FIELDS)
     logger.setInfoMessage("All fields names is correct")
-    
+
     new AuditManualUnplanned().handleIssueCreated(issue)
 }
 else if (issue.issueType.name == CustomFieldsConstants.MANUAL_MEASURE) {
@@ -99,6 +103,7 @@ else if (issue.issueType.name == CustomFieldsConstants.MANUAL_MEASURE) {
     //ALL FIELDS IS CORRECT?
     myBaseUtil.validateFieldsNamesExist(AuditPreparation.AUDIT_PREPARATION_CUSTOM_FIELD_NAMES)
     myBaseUtil.validateFieldsNamesExist(Question.QUESTION_CUSTOM_FIELD_NAMES)
+    myBaseUtil.validateCustomFieldsExist(Audit.AUDIT_CUSTOM_FIELDS)
     logger.setInfoMessage("FIELDS CHECKED BUT NOT ALL")
 
     new ManualMeasure().buildNew(issue)

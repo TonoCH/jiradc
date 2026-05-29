@@ -24,9 +24,12 @@ boolean eq(String a, String b) { return (a != null && b != null && a.equalsIgnor
 FormField issueTypeF  = getFieldById(ISSUE_TYPE)
 FormField levelF      = getFieldByName(AuditPreparation.AUDIT_LEVEL_FIELD_NAME)
 FormField auditTypeF  = getFieldByName(Audit.AUDIT_TYPE_FIELD_NAME)
-FormField questionsF  = getFieldByName(Audit.QUESTIONS_FIELD_NAME)
-FormField questionsFa  = getFieldByName(Audit.FUNCTIONAL_AREA_FIELD_NAME)
-FormField questionsWp  = getFieldByName(Audit.WORKPLACES_FIELD_NAME)
+//FormField questionsF  = getFieldByName(Audit.QUESTIONS_FIELD_NAME)
+//FormField questionsFa  = getFieldByName(Audit.FUNCTIONAL_AREA_FIELD_NAME)
+//FormField questionsWp  = getFieldByName(Audit.WORKPLACES_FIELD_NAME)
+FormField questionsF  = getFieldByName(Audit.QUESTIONS_FIELD.fieldName)
+FormField questionsFa = getFieldByName(Audit.FUNCTIONAL_AREA_FIELD.fieldName)
+FormField questionsWp = getFieldByName(Audit.WORKPLACES_FIELD.fieldName)
 FormField questionsUsages  = getFieldByName(AuditPreparation.QUESTON_USAGE_FIELD_NAME)
 
 final String AUDIT_ISSUE_TYPE_ID = "12700"  

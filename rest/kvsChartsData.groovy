@@ -421,7 +421,9 @@ String resolveAuditsJql(Issue pcIssue, boolean isOverall) {
         return """${base} AND ("Audit Description" ~ "PC2" OR "Audit Description" ~ "PC3" OR "Audit Description" ~ "PC4" OR "Audit Description" ~ "PC6" OR "Audit Description" ~ "PC9")"""
     }
     if (!pcIssue) return base
-    return """${base} AND "${Audit.PROFIT_CENTER_FIELD_NAME}" = ${pcIssue.key}"""
+    return """${base} AND cf[${Audit.PROFIT_CENTER_FIELD.idAsLong}] = ${pcIssue.key}"""
+    //return """${base} AND "${Audit.PROFIT_CENTER_FIELD_NAME}" = ${pcIssue.key}"""
+
 }
 
 /** Mirrors KPIWeeklySnapshotJob.computeStats() for fallback use. */
@@ -531,7 +533,8 @@ Map measureToRow(Issue measure, boolean closed) {
             // Walk parent chain: Question -> Audit -> AuditPreparation
             Issue parentAudit = linkedQuestion.parentObject
             if (parentAudit) {
-                def pc = myBase.getCustomFieldValue(parentAudit, Audit.PROFIT_CENTER_FIELD_NAME)
+                //def pc = myBase.getCustomFieldValue(parentAudit, Audit.PROFIT_CENTER_FIELD_NAME)
+                def pc = parentAudit.getCustomFieldValue(Audit.PROFIT_CENTER_FIELD)
                 if (pc instanceof Issue) pcKey = (pc as Issue).summary ?: (pc as Issue).key
                 level = asString(myBase.getCustomFieldValue(parentAudit, AuditPreparation.AUDIT_LEVEL_FIELD_NAME))
             }
@@ -594,19 +597,22 @@ Map auditToRow(Issue audit) {
 
     String pcName = ""
     try {
-        def pc = myBase.getCustomFieldValue(audit, Audit.PROFIT_CENTER_FIELD_NAME)
+        //def pc = myBase.getCustomFieldValue(audit, Audit.PROFIT_CENTER_FIELD_NAME)
+        def pc = audit.getCustomFieldValue(Audit.PROFIT_CENTER_FIELD)
         if (pc instanceof Issue) pcName = ((Issue) pc).summary ?: ((Issue) pc).key
     } catch (Exception e) {}
 
     String faName = ""
     try {
-        def fa = myBase.getCustomFieldValue(audit, Audit.FUNCTIONAL_AREA_FIELD_NAME)
+        //def fa = myBase.getCustomFieldValue(audit, Audit.FUNCTIONAL_AREA_FIELD_NAME)
+        def fa = audit.getCustomFieldValue(Audit.FUNCTIONAL_AREA_FIELD)
         if (fa instanceof Issue) faName = ((Issue) fa).summary ?: ((Issue) fa).key
     } catch (Exception e) {}
 
     String workplaces = ""
     try {
-        def wp = myBase.getCustomFieldValue(audit, Audit.WORKPLACES_FIELD_NAME)
+        //def wp = myBase.getCustomFieldValue(audit, Audit.WORKPLACES_FIELD_NAME)
+        def wp = audit.getCustomFieldValue(Audit.WORKPLACES_FIELD)
         workplaces = formatIssuePickerList(wp)
     } catch (Exception e) {}
 

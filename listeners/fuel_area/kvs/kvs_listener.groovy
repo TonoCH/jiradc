@@ -103,12 +103,20 @@ if (actualIssue?.issueType?.name == CustomFieldsConstants.AUDIT) {
 
 
     // region audit description – recompute on create / relevant change
-    def changed = event?.getChangeLog()?.getRelated("ChildChangeItem")?.any { ci ->
+    /*def changed = event?.getChangeLog()?.getRelated("ChildChangeItem")?.any { ci ->
         def f = ci.field as String
         f in [
                 Audit.PROFIT_CENTER_FIELD_NAME,
                 Audit.FUNCTIONAL_AREA_FIELD_NAME,
                 Audit.WORKPLACES_FIELD_NAME
+        ]
+    }*/
+    def changed = event?.getChangeLog()?.getRelated("ChildChangeItem")?.any { ci ->
+        def f = ci.field as String
+        f in [
+                Audit.PROFIT_CENTER_FIELD.fieldName,
+                Audit.FUNCTIONAL_AREA_FIELD.fieldName,
+                Audit.WORKPLACES_FIELD.fieldName
         ]
     }
 

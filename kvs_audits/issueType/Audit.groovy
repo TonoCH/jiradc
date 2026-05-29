@@ -30,16 +30,21 @@ public class Audit extends BaseIssue{
     public static final CustomField AUDIT_DESCRIPTION_FIELD      = CustomFieldUtil.getCustomFieldBy("17700") // Text Field (multi-line)
     public static final CustomField KVS_GENERATION_PAYLOAD_FIELD = CustomFieldUtil.getCustomFieldBy("17702") // Text Field (multi-line)
 
+    public static final List<CustomField> AUDIT_CUSTOM_FIELDS = [
+            PROFIT_CENTER_FIELD, FUNCTIONAL_AREA_FIELD, FUNCTIONAL_AREA_KEY_FIELD, WORKPLACES_FIELD,
+            QUESTIONS_FIELD, AUDIT_ID_FIELD, TARGET_END_FIELD, AUDIT_TYPE_FIELD,
+            AUDIT_DESCRIPTION_FIELD, KVS_GENERATION_PAYLOAD_FIELD
+    ]
+
     //region OLD need to be replaced
     public static final String PROFIT_CENTER_FIELD_NAME = "Profit Center" //Single Issue Picker
     public static final String FUNCTIONAL_AREA_FIELD_NAME = "Functional Area" //Single Issue Picker
     public static final String WORKPLACES_FIELD_NAME = "Workplaces" //Multiple Issue Picker
     public static final String QUESTIONS_FIELD_NAME = "Questions" //Multiple Issue Picker
 
-
-    public static final String PROFIT_CENTER_FIELD_ID = CustomFieldUtil.getCustomFieldByName(PROFIT_CENTER_FIELD_NAME)?.getId()// "customfield_15901";//TODO rename all staticly typed ids
-    public static final String FUNCTIONAL_AREA_FIELD_ID = CustomFieldUtil.getCustomFieldByName(FUNCTIONAL_AREA_FIELD_NAME)?.getId()// "customfield_15909";
-    public static final String WORKPLACES_FIELD_ID = CustomFieldUtil.getCustomFieldByName(WORKPLACES_FIELD_NAME)?.getId()// "customfield_15910"; // Multi Issue Picker for Workplaces
+    //public static final String PROFIT_CENTER_FIELD_ID = CustomFieldUtil.getCustomFieldByName(PROFIT_CENTER_FIELD_NAME)?.getId()// "customfield_15901";//TODO rename all staticly typed ids
+    //public static final String FUNCTIONAL_AREA_FIELD_ID = CustomFieldUtil.getCustomFieldByName(FUNCTIONAL_AREA_FIELD_NAME)?.getId()// "customfield_15909";
+    //public static final String WORKPLACES_FIELD_ID = CustomFieldUtil.getCustomFieldByName(WORKPLACES_FIELD_NAME)?.getId()// "customfield_15910"; // Multi Issue Picker for Workplaces
     public static final String FUNCTIONAL_AREA_KEY = "Functional Area Key"; //Select List (single choice)
     public static final String AUDIT_ID_FIELD_NAME = 'Audit_ID'; //Text Field (single-line)
     //public static final String AUDIT_ID_FIELD_ID = CustomFieldUtil.getCustomFieldByName(AUDIT_ID_FIELD_NAME)?.getId()

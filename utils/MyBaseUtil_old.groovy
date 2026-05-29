@@ -31,7 +31,7 @@ import com.atlassian.jira.bc.issue.IssueService
 import com.atlassian.jira.bc.issue.IssueService.TransitionValidationResult
 import com.atlassian.jira.bc.issue.IssueService.IssueResult
 
-public class MyBaseUtil {
+public class MyBaseUtilOld {
 
     def jiraAuthenticationContext = ComponentAccessor.jiraAuthenticationContext
     def searchService = ComponentAccessor.getComponent(SearchService)

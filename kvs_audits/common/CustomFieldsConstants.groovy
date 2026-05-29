@@ -1,6 +1,7 @@
 package kvs_audits.common
 
 import com.atlassian.jira.component.ComponentAccessor
+import kvs_audits.issueType.Audit
 
 //TODO remove or shring this class
 class CustomFieldsConstants {
@@ -16,7 +17,7 @@ class CustomFieldsConstants {
     static final int NUM_OF_DAYS_FOR_TARGET_END = 4
 
     static final String PROFIT_CENTER_KEY = "Profit Center Key"
-    static final String FUNCTIONAL_AREA_KEY = "Functional Area Key"
+    static final String FUNCTIONAL_AREA_KEY = Audit.FUNCTIONAL_AREA_KEY_FIELD.getFieldName();//"Functional Area Key"
     static final String CROSS_AUDITORS_POOL = "Cross Auditors Pool"
 
     static final String AUDIT_PREPARATION = "Audit Preparation"

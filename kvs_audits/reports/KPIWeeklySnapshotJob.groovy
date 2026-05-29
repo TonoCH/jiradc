@@ -281,7 +281,8 @@ class KPIWeeklySnapshotJob {
 
         String pcFilter
         if (pcIssue) {
-            pcFilter = """AND "${Audit.PROFIT_CENTER_FIELD_NAME}" = ${pcIssue.key}"""
+            //pcFilter = """AND "${Audit.PROFIT_CENTER_FIELD_NAME}" = ${pcIssue.key}"""
+            pcFilter = """AND cf[${Audit.PROFIT_CENTER_FIELD.idAsLong}] = ${pcIssue.key}"""
         } else {
             // Option B overall: audits matching the same five PCs as the saved question filters
             pcFilter = """AND ("Audit Description" ~ "PC2" OR "Audit Description" ~ "PC3" OR "Audit Description" ~ "PC4" OR "Audit Description" ~ "PC6" OR "Audit Description" ~ "PC9")"""
