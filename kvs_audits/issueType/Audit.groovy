@@ -225,4 +225,31 @@ public class Audit extends BaseIssue{
         return issue.getCustomFieldValue(TARGET_END_FIELD)
         //return myBaseUtil.getCustomFieldValue(issue, TARGET_END_FIELD_NAME)
     }
+
+    void setInfoDescriptionAndSummary(String pcKey, String faKey, String usageKey, String auditLevel) {
+        if (issue == null) throw new NullPointerException("setInfoDescriptionAndSummary on null Audit.")
+
+        String currentDesc = issue.getDescription() ?: ""
+        String desc = currentDesc + """
+            {*}PC={*} ${pcKey ?: "-"}
+            {*}FA={*} ${faKey ?: "-"}
+            {*}Usage={*} ${usageKey ?: "-"}
+            {*}Audit Level={*} ${auditLevel ?: "-"}
+            """.stripIndent()
+
+        // subArea letter A/B
+        def m = usageKey ? (usageKey =~ /_(A|B)_Level_[45]$/) : null
+        String subArea = m ? m[0][1] : ""
+
+        String newSummary = (issue.getSummary() ?: "") + " - Audit ${auditLevel ?: ""} - ${pcKey ?: "-"}"
+        if (subArea) newSummary += " [${subArea}]"
+        if (faKey)   newSummary += " - ${faKey}"
+
+        if (newSummary.length() > 255) {
+            newSummary = newSummary.substring(0, 252) + "..."
+        }
+
+        issue.setDescription(desc)
+        issue.setSummary(newSummary)
+    }
 }
