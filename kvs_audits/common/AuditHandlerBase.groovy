@@ -552,7 +552,7 @@ public class AuditHandlerBase {
         }
     }
 
-    private String parseSubAreaLetterOrNull(String usageKey) {
+    protected String parseSubAreaLetterOrNull(String usageKey) {
         //  *_A_Level_4 or *_B_Level_4
         //def m = (usageKey =~ /_(A|B)_Level_4$/)
         //add level 5

@@ -8,6 +8,7 @@ import kvs_audits.issueType.Audit
 import kvs_audits.issueType.AuditPreparation
 import kvs_audits.issueType.Question
 import utils.MyBaseUtil
+import utils.CustomFieldUtil
 
 /**
  * questions
@@ -26,15 +27,21 @@ getJql = { Issue issue, String configuredJql ->
         return defaultQuery
     }
 
-    Audit audit = new Audit(issue)
-    Issue profitCenter = audit.getProfitCenter()
-    if (profitCenter == null) {
-        return defaultQuery
-    }
+    def customFieldUtil = new CustomFieldUtil()
 
-    Issue functionalArea = audit.getFunctionalArea()
-    def selectedLevel = audit.getAuditLevel()
-    if (!selectedLevel) {
+    Issue profitCenter = customFieldUtil.getCustomFieldValueFromIssuePicker(
+            issue,
+            Audit.PROFIT_CENTER_FIELD_NAME
+    ) as Issue
+
+    Issue functionalArea = customFieldUtil.getCustomFieldValueFromIssuePicker(
+            issue,
+            Audit.FUNCTIONAL_AREA_FIELD_NAME
+    ) as Issue
+
+    def selectedLevel = new Audit(issue)?.getAuditLevel()
+
+    if (!profitCenter || !functionalArea || !selectedLevel) {
         return defaultQuery
     }
 

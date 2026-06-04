@@ -2,6 +2,7 @@ package fields.kvs
 
 import com.atlassian.jira.issue.Issue
 import kvs_audits.issueType.Audit
+import utils.CustomFieldUtil
 import utils.MyBaseUtil
 
 /**
@@ -13,44 +14,56 @@ import utils.MyBaseUtil
 
 getJql = { Issue issue, String configuredJql ->
     if (issue) {
-        Audit audit = new Audit(issue)
+        MyBaseUtil myBaseUtil = new MyBaseUtil()
+        def customFieldUtil = new CustomFieldUtil()
 
-        Issue profitCenter = audit.getProfitCenter()
-        if (profitCenter != null) {
-            String profitCenterKey = profitCenter.getKey()
+        Issue profitCenter = customFieldUtil.getCustomFieldValueFromIssuePicker(
+                issue,
+                Audit.PROFIT_CENTER_FIELD_NAME
+        ) as Issue
 
-            MyBaseUtil myBaseUtil = new MyBaseUtil()
+        Issue selectedFa = customFieldUtil.getCustomFieldValueFromIssuePicker(
+                issue,
+                Audit.FUNCTIONAL_AREA_FIELD_NAME
+        ) as Issue
 
-            // If a Functional Area is already selected, restrict WPs to that FA only.
-            // Otherwise show all WPs under any FA of this Profit Center.
-            Issue selectedFa = audit.getFunctionalArea()
 
-            List<Issue> functionalAreas
-            if (selectedFa != null) {
-                functionalAreas = [selectedFa]
-            } else {
-                String faJql = "project = KVSPC AND issuetype = 'Functional Areas' AND 'Profit Center' = ${profitCenterKey}"
-                functionalAreas = myBaseUtil.findIssues(faJql)
-            }
-
-            List<String> issueKeys = new ArrayList<>()
-
-            functionalAreas.each { faIssue ->
-                issueKeys.addAll(
-                        faIssue.getSubTaskObjects()
-                                .findAll { it.issueType.name == 'Workplace' }
-                                .collect { it.key }
-                )
-            }
-
-            if (issueKeys.isEmpty()) {
-                return 'issueType = "Workplace" AND project = KVSPC AND issue = EMPTY'
-            }
-
-            String keysForJql = issueKeys.collect { "\"${it}\"" }.join(", ")
-
-            return "key in (${keysForJql})"
+        if (!profitCenter || !profitCenter.key) {
+            return 'project = KVSPC AND issuetype = "Workplace"'
         }
+
+        String profitCenterKey = profitCenter.key
+
+        List<Issue> functionalAreas
+        if (selectedFa != null) {
+            functionalAreas = [selectedFa]
+        } else {
+            String faJql = """
+        project = KVSPC 
+        AND issuetype = 'Functional Areas' 
+        AND "Profit Center" = "${profitCenterKey}"
+    """
+            functionalAreas = myBaseUtil.findIssues(faJql)
+        }
+
+        List<String> issueKeys = new ArrayList<>()
+
+        functionalAreas.each { faIssue ->
+            issueKeys.addAll(
+                    faIssue.getSubTaskObjects()
+                            .findAll { it.issueType.name == 'Workplace' }
+                            .collect { it.key }
+            )
+        }
+
+        if (issueKeys.isEmpty()) {
+            return 'issueType = "Workplace" AND project = KVSPC AND issue = EMPTY'
+        }
+
+        String keysForJql = issueKeys.collect { "\"${it}\"" }.join(", ")
+
+        return "key in (${keysForJql})"
+
     }
 
     return 'project = KVSPC AND issuetype = "Workplace"'

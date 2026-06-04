@@ -231,6 +231,31 @@ class AuditLevel5Handler extends AuditHandlerBase {
 
         def audit = new Audit(result.issue)
         audit.setAuditId()
+        Issue issue = audit.getIssue();
+
+        //region info for decription and summary
+        String desc = issue.getDescription() + """
+            {*}PC={*} ${pc.key}
+            {*}FA={*} ${nextFaKey ?: "-"}
+            {*}Usage={*} ${usageKey}
+            {*}Audit Level={*} ${currentAuditLevel}
+            """.stripIndent()
+
+        String subArea = parseSubAreaLetterOrNull(usageKey) ?: "";
+        String areaInfo = nextFaKey ?: ""
+        String newSummary = issue.getSummary() + " - Audit L5 - ${pc.key}"
+        if (subArea)    { newSummary += " [${subArea}]"}
+        if (areaInfo)   { newSummary += " - ${areaInfo}"}
+
+        //clean summary, cannot be longer than 255 chars
+        if (newSummary.length() > 255) {
+            newSummary = newSummary.substring(0, 252) + "..."
+        }
+
+        issue.setDescription(desc)
+        issue.setSummary(newSummary)
+        //endregion
+
         audit.commitIssueUpdate(EventDispatchOption.DO_NOT_DISPATCH)
 
         if (auditPreparationIssue.getDate_target_start()) {
