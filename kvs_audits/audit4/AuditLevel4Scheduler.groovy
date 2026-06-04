@@ -24,6 +24,29 @@ class AuditLevel4Scheduler extends AuditScheduler implements IAuditScheduler {
 
     public static final String auditLevel = CustomFieldsConstants.AUDIT_LEVEL_4
 
+    /**
+     * Static descriptor of behavioral rules — consumed by jobs/kvs/rulesAudit.groovy.
+     * KEEP IN SYNC WITH CODE. Drift between descriptor and implementation is the whole point of the audit.
+     */
+    public static final Map<String, Object> AUDIT_RULES = [
+            auditLevel           : CustomFieldsConstants.AUDIT_LEVEL_4,
+            handlerClass         : 'kvs_audits.audit4.AuditLevel4Handler',
+            rotationUnit         : 'Functional Area',
+            subAreaSplit         : 'A/B (parsed from usageKey suffix _A_Level_4 / _B_Level_4)',
+            lookAheadMonths      : 3,
+            safetyLimit          : 100,
+            intervalSource       : "AuditPreparation 'Interval' field via CommonHelper.getNextDate",
+            fixedIntervalOverride: null,
+            auditorRotation      : 'Global cursor (data.globalAuditorIndex), advanced ONLY after full cycle through all usages (when usageTurnIndex wraps to 0)',
+            usageRotation        : 'Round-robin via data.usageTurnIndex; one usage per tick',
+            auditsPerTick        : 'One audit per tick (single usage)',
+            crossAudits          : 'Implemented but TEMPORARILY DISABLED (globalCrossPool forced to empty list)',
+            onePcPerTick         : false,
+            specialQuestions     : 'Per-FA (wpRotation[faKey]); semi-yearly=+6M, yearly=+12M; non-cross only',
+            rotationDataShape    : 'root.{usageTurnIndex, globalAuditorIndex, questions_usages[usageKey].{workplaces, currentWorkplaceIndex, auditors, currentAuditorIndex, rotationCount, crossAuditHistory[], specialQuestions[qKey].wpRotation[faKey].nextRotationDate}}',
+            notes                : 'Cross-audit candidate every rotationCount % 3 == 0 (gated by global cross pool; one cross-auditor per quarter globally).'
+    ]
+
     AuditLevel4Scheduler() {
         super(auditLevel)
     }
@@ -373,9 +396,10 @@ class AuditLevel4Scheduler extends AuditScheduler implements IAuditScheduler {
         LocalDate rotationDay = dateOfNextRotation.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
 
         int safetyCounter = 0
-        final int SAFETY_LIMIT = 100
+        final int SAFETY_LIMIT = AUDIT_RULES.safetyLimit as int
+        final int LOOK_AHEAD_MONTHS = AUDIT_RULES.lookAheadMonths as int
 
-        while (!rotationDay.isAfter(today.plusMonths(3)) && safetyCounter < SAFETY_LIMIT) {
+        while (!rotationDay.isAfter(today.plusMonths(LOOK_AHEAD_MONTHS)) && safetyCounter < SAFETY_LIMIT) {
             safetyCounter++
             LocalDate before = rotationDay
 

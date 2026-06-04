@@ -29,7 +29,29 @@ import groovy.json.JsonOutput
 class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
 
     public static final String auditLevel = CustomFieldsConstants.AUDIT_LEVEL_5
-    private static final String MID_MONTH_INTERVAL = "monthly-mid"
+
+    /**
+     * Static descriptor of behavioral rules — consumed by jobs/kvs/rulesAudit.groovy.
+     * KEEP IN SYNC WITH CODE. Drift between descriptor and implementation is the whole point of the audit.
+     */
+    public static final Map<String, Object> AUDIT_RULES = [
+            auditLevel           : CustomFieldsConstants.AUDIT_LEVEL_5,
+            handlerClass         : 'kvs_audits.audit5.AuditLevel5Handler',
+            rotationUnit         : 'Functional Area',
+            subAreaSplit         : 'A/B (parsed from usageKey suffix _A_Level_5 / _B_Level_5)',
+            lookAheadMonths      : 3,
+            safetyLimit          : 12,
+            intervalSource       : 'IGNORED — fixed interval enforced',
+            fixedIntervalOverride: 'monthly-mid',
+            auditorRotation      : 'Global cursor (data.globalAuditorIndex) + per-pick offset; advanced by picks per tick',
+            usageRotation        : 'Round-robin via data.usageTurnIndex; multiple usages per tick',
+            auditsPerTick        : 'Up to N audits per month, N = min(numberOfAuditors, numberOfUniqueProfitCenters)',
+            crossAudits          : 'Not supported (isCross hard-coded false)',
+            onePcPerTick         : true,
+            specialQuestions     : 'Per-FA (wpRotation[faKey]); semi-yearly=+6M, yearly=+12M',
+            rotationDataShape    : 'root.{usageTurnIndex, globalAuditorIndex, questions_usages[usageKey].{workplaces, currentWorkplaceIndex, auditors, currentAuditorIndex, rotationCount, specialQuestions[qKey].wpRotation[faKey].nextRotationDate}}',
+            notes                : 'Fixed interval = 15th of each month. AuditPreparation Interval field is hidden / ignored. Each auditor gets exactly one audit per month; each PC at most one per month.'
+    ]
 
     AuditLevel5Scheduler() {
         super(auditLevel)
@@ -59,9 +81,10 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         LocalDate rotationDay = dateOfNextRotation.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
 
         int safetyCounter = 0
-        final int SAFETY_LIMIT = 12
+        final int SAFETY_LIMIT = AUDIT_RULES.safetyLimit as int
+        final int LOOK_AHEAD_MONTHS = AUDIT_RULES.lookAheadMonths as int
 
-        while (!rotationDay.isAfter(today.plusMonths(3)) && safetyCounter < SAFETY_LIMIT) {
+        while (!rotationDay.isAfter(today.plusMonths(LOOK_AHEAD_MONTHS)) && safetyCounter < SAFETY_LIMIT) {
             safetyCounter++
             LocalDate before = rotationDay
 
@@ -256,7 +279,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
     }
 
     private void advanceDate(AuditLevel5Handler handler, LocalDate rotationDay) {
-        LocalDate next = CommonHelper.getNextDate(rotationDay, MID_MONTH_INTERVAL)
+        LocalDate next = CommonHelper.getNextDate(rotationDay, AUDIT_RULES.fixedIntervalOverride as String)
         logger.setWarnMessage("Date of next rotation: nextRotation = ${next}")
         handler.updateDateOfNextRotation(next)
     }

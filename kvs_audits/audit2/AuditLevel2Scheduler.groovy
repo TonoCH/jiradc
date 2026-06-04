@@ -23,6 +23,29 @@ class AuditLevel2Scheduler extends AuditScheduler implements IAuditScheduler {
 
     public static final String auditLevel = CustomFieldsConstants.AUDIT_LEVEL_2
 
+    /**
+     * Static descriptor of behavioral rules — consumed by jobs/kvs/rulesAudit.groovy.
+     * KEEP IN SYNC WITH CODE. Drift between descriptor and implementation is the whole point of the audit.
+     */
+    public static final Map<String, Object> AUDIT_RULES = [
+            auditLevel           : CustomFieldsConstants.AUDIT_LEVEL_2,
+            handlerClass         : 'kvs_audits.audit2.AuditLevel2Handler',
+            rotationUnit         : 'Workplace',
+            subAreaSplit         : 'none',
+            lookAheadMonths      : 3,
+            safetyLimit          : 100,
+            intervalSource       : "AuditPreparation 'Interval' field via CommonHelper.getNextDate",
+            fixedIntervalOverride: null,
+            auditorRotation      : 'Per-usage cursor (currentAuditorIndex), advanced after each rotation',
+            usageRotation        : 'All usages processed every tick (no usageTurnIndex)',
+            auditsPerTick        : 'One audit per usage, all usages each tick',
+            crossAudits          : 'Not supported',
+            onePcPerTick         : false,
+            specialQuestions     : 'Per-workplace (wpRotation[workplaceKey]); only semi-yearly / yearly are re-scheduled, others removed after use',
+            rotationDataShape    : 'questions_usages[usageKey].{workplaces, currentWorkplaceIndex, auditors, currentAuditorIndex, specialQuestions[qKey].wpRotation[wpKey].nextRotationDate}',
+            notes                : 'Auditors reconciled live via AuditScheduler.getLiveAuditors before each pick.'
+    ]
+
     AuditLevel2Scheduler() {
         super(auditLevel)
     }
@@ -47,10 +70,10 @@ class AuditLevel2Scheduler extends AuditScheduler implements IAuditScheduler {
             LocalDate rotationDay = dateOfNextRotation.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
             logger.setInfoMessage("rotationDay is: $rotationDay")
 
-            //generating audits 3 months ahead
+            final int lookAheadMonths = AUDIT_RULES.lookAheadMonths as int
+            final int safetyLimit    = AUDIT_RULES.safetyLimit as int
             int safetyCounter = 0  // protection for cycling
-            int safetyLimit = 100
-            while (!rotationDay.isAfter(today.plusMonths(3))) {
+            while (!rotationDay.isAfter(today.plusMonths(lookAheadMonths))) {
 
                 if (safetyCounter >= safetyLimit) {
                     logger.setErrorMessage("Safety limit of ${safetyLimit} rotations reached for ${auditPreparation.getIssue().key}. Exiting to prevent infinite loop.")
@@ -68,8 +91,8 @@ class AuditLevel2Scheduler extends AuditScheduler implements IAuditScheduler {
                 safetyCounter++
             }
 
-            if (rotationDay.isAfter(today.plusMonths(3))) {
-                logger.setInfoMessage("Next rotation date (${rotationDay}) is more than 3 months ahead. No further rotation required.")
+            if (rotationDay.isAfter(today.plusMonths(lookAheadMonths))) {
+                logger.setInfoMessage("Next rotation date (${rotationDay}) is more than ${lookAheadMonths} months ahead. No further rotation required.")
             }
         }
     }
