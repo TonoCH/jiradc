@@ -52,7 +52,7 @@ if(auditTypeValue in [Audit.UNPLANNED]) {
     int generated = 0
     List<String> usages = helper.buildQuestionUsageKeys(pc, fa, level) ?: []
     if (!usages || usages.isEmpty()) {
-        logger.setErrorMessage("Unplanned Audit ${audit.getIssue().key}: no Question Usage derived for Level 4.")
+        logger.setErrorMessage("Unplanned Audit ${audit.getIssue().key}: no Question Usage derived. " + "pc=${pc?.key}, fa=${fa?.key}, level='${level}'.")
         return
     }
     usages.each { usage ->

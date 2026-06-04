@@ -19,7 +19,7 @@ import com.atlassian.jira.event.type.EventDispatchOption
 public class Audit extends BaseIssue{
 
     public static final String AUDIT_ISSUE_TYPE_ID = "12700";//TODO be careful please check
-    public static final CustomField PROFIT_CENTER_FIELD          = CustomFieldUtil.getCustomFieldBy("15901") // Single Issue Picker
+    public static final CustomField PROFIT_CENTER_FIELD          = CustomFieldUtil.getCustomFieldBy("17502") // Single Issue Picker
     public static final CustomField FUNCTIONAL_AREA_FIELD        = CustomFieldUtil.getCustomFieldBy("17504") // Single Issue Picker
     public static final CustomField FUNCTIONAL_AREA_KEY_FIELD        = CustomFieldUtil.getCustomFieldBy("17505") //Select List (single choice)
     public static final CustomField WORKPLACES_FIELD             = CustomFieldUtil.getCustomFieldBy("17514") // Multi Issue Picker
