@@ -78,28 +78,57 @@ private static String buildLevel1Html() {
     border: 1px solid #999; padding: 3px 4px; text-align: center; vertical-align: middle;
 }
 .l1-table thead th { background: #e8e8e8; font-weight: 700; }
-.l1-col-id    { width: 28px; min-width: 18px;}
-.l1-col-std   { width: 90px; text-align: left !important; min-width: 60px;}
-.l1-col-text  { text-align: left !important; min-width: 200px;}
-.l1-col-check { width: 16px; min-width: 12px; max-width: 22px; padding: 1px 2px !important; }
+/* Column widths — applied via <col> tags emitted by JS in <colgroup>.
+   Defaults; per-size overrides below. */
+col.l1-col-id    { width: 32px; }
+col.l1-col-std   { width: 95px; }
+/* col.l1-col-text intentionally has no width → absorbs remaining space */
+col.l1-col-check { width: 28px; }
+
+/* Body cell tuning */
+.l1-col-id    { min-width: 24px; }
+.l1-col-std   { text-align: left !important; min-width: 70px; }
+.l1-col-text  { text-align: left !important; min-width: 220px; }
+/* Check cell ≈ width of "Mon" (3 chars). Height = single text line. */
+.l1-col-check { padding: 0 1px !important; line-height: 1.1; white-space: nowrap; }
+.l1-table tbody td.l1-col-check { height: 16px; }
 
 .l1-std-cell  { text-align: left !important; font-weight: 600; background: #f5f5f5; }
 .l1-text-cell { text-align: left !important; }
 
-/* Dynamic size classes — driven by JS based on workplace count */
+/* Dynamic size classes — JS picks one based on (workplaces × visible days).
+   Both font-size and column widths scale together so "Mon" still fits. */
 .l1-size-xl { font-size: 16px; }
-.l1-size-xl .l1-col-std, .l1-size-xl .l1-col-text { font-size: 16px; }
+.l1-size-xl col.l1-col-check { width: 32px; }
+.l1-size-xl col.l1-col-id    { width: 36px; }
+.l1-size-xl col.l1-col-std   { width: 110px; }
+
 .l1-size-lg { font-size: 14px; }
-.l1-size-lg .l1-col-std, .l1-size-lg .l1-col-text { font-size: 14px; }
+.l1-size-lg col.l1-col-check { width: 28px; }
+.l1-size-lg col.l1-col-id    { width: 32px; }
+.l1-size-lg col.l1-col-std   { width: 100px; }
+
 .l1-size-md { font-size: 12px; }
-.l1-size-md .l1-col-std, .l1-size-md .l1-col-text { font-size: 12px; }
+.l1-size-md col.l1-col-check { width: 24px; }
+.l1-size-md col.l1-col-id    { width: 30px; }
+.l1-size-md col.l1-col-std   { width: 95px; }
+
 .l1-size-sm { font-size: 10px; }
-.l1-size-sm .l1-col-std, .l1-size-sm .l1-col-text { font-size: 10px; }
+.l1-size-sm col.l1-col-check { width: 20px; }
+.l1-size-sm col.l1-col-id    { width: 26px; }
+.l1-size-sm col.l1-col-std   { width: 80px; }
+
+/* Print header — Responsible-person sub-table (per workplace) */
+.l1-rh-resp        { margin-top: 4px; }
+.l1-rh-resp .l1-rh-label  { width: 160px; }
+.l1-rh-wp-name     { font-weight: 600; background: #f5f5f5; text-align: center; }
+.l1-rh-resp-blank  { height: 22px; }
 
 .l1-cell-disabled {
     background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #eee 2px, #eee 5px) !important;
 }
 .l1-signature-row td { height: 34px; border-top: 2px solid #555; }
+.l1-signature-label  { text-align: left !important; font-weight: 700; }
 
 .l1-report-footer {
     margin-top: 10px; font-size: 10px; color: #777;
@@ -143,7 +172,8 @@ private static String buildLevel1Html() {
     }
 
 
-    .l1-col-check { width: 16px !important; padding: 1px !important; }
+    .l1-col-check { padding: 0 1px !important; }
+    /* col widths come from the colgroup + size-class rules above */
     .l1-hint { background: #fff !important; border-left: 2px solid #444 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
     @page { size: landscape; margin: 6mm; }

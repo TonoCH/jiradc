@@ -1059,7 +1059,8 @@ AJS.toInit(function () {
         curGrp.items.push(q);
       });
 
-      // Dynamic font-size class based on check-column pressure
+      // Pick a size class based on check-column pressure. All actual widths
+      // and font sizes live in the CSS (.l1-size-xl/lg/md/sm rules).
       var totalCheckCols = wp.length * visDays.length;
       var sizeCls;
       if (totalCheckCols <= 5)        sizeCls = 'l1-size-xl';
@@ -1068,6 +1069,17 @@ AJS.toInit(function () {
       else                             sizeCls = 'l1-size-sm';
 
       var h = '<table class="l1-table ' + sizeCls + '">';
+
+      // <colgroup> classes are styled in CSS — JS only emits the markup.
+      // l1-col-text has no width rule → absorbs leftover space.
+      h += '<colgroup>';
+      h += '<col class="l1-col-id">';
+      h += '<col class="l1-col-std">';
+      h += '<col class="l1-col-text">';
+      for (var ci = 0; ci < totalCheckCols; ci++) {
+        h += '<col class="l1-col-check">';
+      }
+      h += '</colgroup>';
 
       // THEAD row 1
       h += '<thead><tr>';
@@ -1118,7 +1130,7 @@ AJS.toInit(function () {
 
       // Signature row
       h += '<tr class="l1-signature-row">';
-      h += '<td colspan="3" style="text-align:left;font-weight:700">' + escapeHtml(t.signature) + '</td>';
+      h += '<td colspan="3" class="l1-signature-label">' + escapeHtml(t.signature) + '</td>';
       for (var wi = 0; wi < wp.length; wi++) {
         h += '<td colspan="' + visDays.length + '"></td>';
       }
@@ -1153,14 +1165,13 @@ AJS.toInit(function () {
 
       // Per-workplace Responsible-person row — filled in by hand after printout
       if (wp && wp.length) {
-        h += '<table style="margin-top:4px"><tr>';
-        h += '<td class="l1-rh-label" style="width:160px">' + escapeHtml(t.responsiblePerson) + ':</td>';
+        h += '<table class="l1-rh-resp"><tr>';
+        h += '<td class="l1-rh-label">' + escapeHtml(t.responsiblePerson) + ':</td>';
         for (var wi = 0; wi < wp.length; wi++) {
-          h += '<td style="font-weight:600;background:#f5f5f5;text-align:center">'
-            + escapeHtml(wp[wi].name) + '</td>';
+          h += '<td class="l1-rh-wp-name">' + escapeHtml(wp[wi].name) + '</td>';
         }
         h += '</tr><tr>';
-        h += '<td class="l1-rh-label" style="height:22px"></td>';
+        h += '<td class="l1-rh-label l1-rh-resp-blank"></td>';
         for (var wi2 = 0; wi2 < wp.length; wi2++) {
           h += '<td></td>';
         }
