@@ -80,14 +80,14 @@ private static String buildLevel1Html() {
 .l1-table thead th { background: #e8e8e8; font-weight: 700; }
 /* Column widths — applied via <col> tags emitted by JS in <colgroup>.
    Defaults; per-size overrides below. */
-col.l1-col-id    { width: 32px; }
-col.l1-col-std   { width: 95px; }
+col.l1-col-id    { width: 42px; }
+col.l1-col-std   { width: 140px; }
 /* col.l1-col-text intentionally has no width → absorbs remaining space */
-col.l1-col-check { width: 28px; }
+col.l1-col-check { width: 38px; }
 
 /* Body cell tuning */
-.l1-col-id    { min-width: 24px; }
-.l1-col-std   { text-align: left !important; min-width: 70px; }
+.l1-col-id    { min-width: 36px; }
+.l1-col-std   { text-align: left !important; min-width: 110px; }
 .l1-col-text  { text-align: left !important; min-width: 220px; }
 /* Check cell ≈ width of "Mon" (3 chars). Height = single text line. */
 .l1-col-check { padding: 0 1px !important; line-height: 1.1; white-space: nowrap; }
@@ -99,24 +99,24 @@ col.l1-col-check { width: 28px; }
 /* Dynamic size classes — JS picks one based on (workplaces × visible days).
    Both font-size and column widths scale together so "Mon" still fits. */
 .l1-size-xl { font-size: 16px; }
-.l1-size-xl col.l1-col-check { width: 32px; }
-.l1-size-xl col.l1-col-id    { width: 36px; }
-.l1-size-xl col.l1-col-std   { width: 110px; }
+.l1-size-xl col.l1-col-check { width: 44px; }
+.l1-size-xl col.l1-col-id    { width: 48px; }
+.l1-size-xl col.l1-col-std   { width: 165px; }
 
 .l1-size-lg { font-size: 14px; }
-.l1-size-lg col.l1-col-check { width: 28px; }
-.l1-size-lg col.l1-col-id    { width: 32px; }
-.l1-size-lg col.l1-col-std   { width: 100px; }
+.l1-size-lg col.l1-col-check { width: 40px; }
+.l1-size-lg col.l1-col-id    { width: 44px; }
+.l1-size-lg col.l1-col-std   { width: 150px; }
 
 .l1-size-md { font-size: 12px; }
-.l1-size-md col.l1-col-check { width: 24px; }
-.l1-size-md col.l1-col-id    { width: 30px; }
-.l1-size-md col.l1-col-std   { width: 95px; }
+.l1-size-md col.l1-col-check { width: 38px; }
+.l1-size-md col.l1-col-id    { width: 42px; }
+.l1-size-md col.l1-col-std   { width: 140px; }
 
 .l1-size-sm { font-size: 10px; }
-.l1-size-sm col.l1-col-check { width: 20px; }
-.l1-size-sm col.l1-col-id    { width: 26px; }
-.l1-size-sm col.l1-col-std   { width: 80px; }
+.l1-size-sm col.l1-col-check { width: 34px; }
+.l1-size-sm col.l1-col-id    { width: 38px; }
+.l1-size-sm col.l1-col-std   { width: 120px; }
 
 /* Print header — Responsible-person sub-table (per workplace) */
 .l1-rh-resp        { margin-top: 4px; }
