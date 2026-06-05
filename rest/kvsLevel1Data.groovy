@@ -81,9 +81,19 @@ kvsLevel1Data(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
             case "checklistData":
                 String pcIssueKey = queryParams.getFirst("profitCenter")
                 String faIssueKey = queryParams.getFirst("functionalArea")
+                String lang = (queryParams.getFirst("lang") ?: "DE").toUpperCase()
+                if (!(lang in ["DE", "EN", "SK"])) lang = "DE"
                 if (!pcIssueKey || !faIssueKey) {
                     return jsonError(400, "profitCenter and functionalArea parameters required")
                 }
+
+                // Map language to the Jira fields holding the localized text
+                String summaryField = (lang == "EN") ? Question.SUMMARY_EN_FIELD_NAME
+                        : (lang == "SK") ? Question.SUMMARY_SK_FIELD_NAME
+                        : null // DE → use native issue.summary
+                String categoryField = (lang == "EN") ? Question.CATEGORY_EN_FIELD_NAME
+                        : (lang == "SK") ? Question.CATEGORY_SK_FIELD_NAME
+                        : Question.CATEGORY_DE_FIELD_NAME
 
                 Issue pcIssue = myBaseUtil.getIssueByKey(pcIssueKey)
                 Issue faIssue = myBaseUtil.getIssueByKey(faIssueKey)
@@ -126,7 +136,20 @@ kvsLevel1Data(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
                     def qid = myBaseUtil.getCustomFieldValue(q, Question.QUESTION_ID_FIELD_NAME)
                     String idStr = formatQuestionId(qid)
 
-                    def categoryDE = myBaseUtil.getCustomFieldValue(q, "Category DE") ?: ""
+                    def categoryRaw = myBaseUtil.getCustomFieldValue(q, categoryField) ?: ""
+                    // Fallback to DE if requested language category is empty
+                    if (!categoryRaw && lang != "DE") {
+                        categoryRaw = myBaseUtil.getCustomFieldValue(q, Question.CATEGORY_DE_FIELD_NAME) ?: ""
+                    }
+
+                    // Text in requested language; DE uses native summary
+                    String text
+                    if (summaryField) {
+                        def localized = myBaseUtil.getCustomFieldValue(q, summaryField)
+                        text = (localized ? localized.toString() : (q.summary ?: "")) as String
+                    } else {
+                        text = q.summary ?: ""
+                    }
 
                     // Audit Day field (Select List single) - not exist yet
                     String dayValue = null
@@ -140,8 +163,8 @@ kvsLevel1Data(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
                     [
                             key     : q.key,
                             id      : idStr,
-                            standard: categoryDE.toString(),
-                            text    : q.summary ?: "",
+                            standard: categoryRaw.toString(),
+                            text    : text,
                             day     : dayValue    // "Mon".."Fri" or null
                     ]
                 }
@@ -152,7 +175,8 @@ kvsLevel1Data(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
                         usageKey      : usageKey,
                         workplaces    : workplaces,
                         questions     : questions,
-                        singleWorkplaceMode: singleWorkplaceMode
+                        singleWorkplaceMode: singleWorkplaceMode,
+                        lang          : lang
                 ]
                 break
 

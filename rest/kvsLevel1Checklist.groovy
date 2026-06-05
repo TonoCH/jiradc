@@ -65,22 +65,36 @@ private static String buildLevel1Html() {
 
 .l1-rh-label { font-weight: 700; background: #eee; width: 160px; }
 
+/* Hint above checklist */
+.l1-hint {
+    font-size: 12px; font-style: italic; color: #444;
+    margin: 6px 0 8px 0; padding: 6px 10px;
+    background: #fff8e1; border-left: 3px solid #FFAB00; border-radius: 3px;
+}
+
 /* Checklist table */
-.l1-table { /*width: 100%;*/ border-collapse: separate; font-size: 11px; }
+.l1-table { width: 100%; border-collapse: separate; font-size: 12px; table-layout: fixed; }
 .l1-table th, .l1-table td {
     border: 1px solid #999; padding: 3px 4px; text-align: center; vertical-align: middle;
 }
 .l1-table thead th { background: #e8e8e8; font-weight: 700; }
-.l1-col-id    { width: 20px; min-width: 10px;}
-.l1-col-std   { width: 80px; text-align: left !important; font-size: 10px; min-width: 60px;}
-.l1-col-text  { width: 300px; text-align: left !important; font-size: 10px; min-width: 250px;}
-.l1-col-day   { width: 48px; font-size: 10px; min-width: 30px;}
-.l1-col-check { width: 20px; min-width: 20px; }
+.l1-col-id    { width: 28px; min-width: 18px;}
+.l1-col-std   { width: 90px; text-align: left !important; min-width: 60px;}
+.l1-col-text  { text-align: left !important; min-width: 200px;}
+.l1-col-check { width: 16px; min-width: 12px; max-width: 22px; padding: 1px 2px !important; }
 
-.l1-std-cell  { text-align: left !important; font-weight: 600; font-size: 10px; background: #f5f5f5; }
-.l1-text-cell { text-align: left !important; font-size: 10px; }
-.l1-day-label { font-size: 10px; white-space: nowrap; }
-.l1-row-nio .l1-day-label { color: #888; }
+.l1-std-cell  { text-align: left !important; font-weight: 600; background: #f5f5f5; }
+.l1-text-cell { text-align: left !important; }
+
+/* Dynamic size classes — driven by JS based on workplace count */
+.l1-size-xl { font-size: 16px; }
+.l1-size-xl .l1-col-std, .l1-size-xl .l1-col-text { font-size: 16px; }
+.l1-size-lg { font-size: 14px; }
+.l1-size-lg .l1-col-std, .l1-size-lg .l1-col-text { font-size: 14px; }
+.l1-size-md { font-size: 12px; }
+.l1-size-md .l1-col-std, .l1-size-md .l1-col-text { font-size: 12px; }
+.l1-size-sm { font-size: 10px; }
+.l1-size-sm .l1-col-std, .l1-size-sm .l1-col-text { font-size: 10px; }
 
 .l1-cell-disabled {
     background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #eee 2px, #eee 5px) !important;
@@ -129,9 +143,10 @@ private static String buildLevel1Html() {
     }
 
 
-    .l1-col-check { width: 22px !important; padding: 1px !important; }
+    .l1-col-check { width: 16px !important; padding: 1px !important; }
+    .l1-hint { background: #fff !important; border-left: 2px solid #444 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-    @page { size: landscape; margin: 8mm; }
+    @page { size: landscape; margin: 6mm; }
 }
 </style>
 
@@ -160,6 +175,14 @@ private static String buildLevel1Html() {
         <label>Monday date</label>
         <input type="date" id="l1-inpDate" />
     </div>
+    <div class="l1-filter-group">
+        <label>Language</label>
+        <select id="l1-selLang">
+            <option value="DE">Deutsch</option>
+            <option value="EN">English</option>
+            <option value="SK">Slovenčina</option>
+        </select>
+    </div>
     <div class="l1-spacer"></div>
     <button class="l1-btn" id="l1-btnLoad">Load</button>
     <button class="l1-btn l1-btn-print" id="l1-btnPrint" disabled>Print / PDF</button>
@@ -169,6 +192,7 @@ private static String buildLevel1Html() {
 <div class="l1-page">
     <div class="l1-state-msg" id="l1-stateMsg">Please select Profit Center and Functional Area.</div>
     <div class="l1-report-header" id="l1-reportHeader"></div>
+    <div class="l1-hint" id="l1-hint" style="display:none"></div>
     <div id="l1-tableWrap"></div>
     <div class="l1-report-footer" id="l1-reportFooter" style="display:none">
         <span>KVS Level 1 Checklist</span>
