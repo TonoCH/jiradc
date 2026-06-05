@@ -24,8 +24,8 @@ class AuditLevel2Scheduler extends AuditScheduler implements IAuditScheduler {
     public static final String auditLevel = CustomFieldsConstants.AUDIT_LEVEL_2
 
     /**
-     * Static descriptor of behavioral rules — consumed by jobs/kvs/rulesAudit.groovy.
-     * KEEP IN SYNC WITH CODE. Drift between descriptor and implementation is the whole point of the audit.
+     * Static descriptor of behavioral rules consumed by jobs/kvs/rulesAudit.groovy.
+     * Drift between descriptor and implementation is the whole point of the audit.
      */
     public static final Map<String, Object> AUDIT_RULES = [
             auditLevel           : CustomFieldsConstants.AUDIT_LEVEL_2,

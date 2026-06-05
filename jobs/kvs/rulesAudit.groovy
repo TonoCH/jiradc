@@ -1,14 +1,5 @@
 /**
  * rulesAudit
- *
- * KVS audit-rules drift report.
- *
- * Reads the static AUDIT_RULES descriptor declared in each AuditLevel{N}Scheduler,
- * reflects the common base AuditScheduler, snapshots key constants and emits a
- * single HTML email summarizing the current behavior of every audit level so
- * that code drift can be detected by simply comparing two consecutive mails
- * (the subject carries a behavioral fingerprint).
- *
  * @author chabrecek.anton
  * Created on 4. 6. 2026.
  */
@@ -27,7 +18,7 @@ import java.security.MessageDigest
 
 // =============== CONFIG ===============
 final String RECIPIENT_USERNAME = "chabrecek.anton"
-final String SUBJECT_PREFIX     = "[KVS] Audit-rules drift report"
+final String SUBJECT_PREFIX     = "[KVS] Audit rules report"
 // =====================================
 
 // Order matters: shapes column order of the comparison matrix.
@@ -64,7 +55,7 @@ def warnings = []
 // ---------------- collect descriptors via reflection ----------------
 
 def descriptors = [:]   // className -> Map (rules)
-schedulers.each { Class clazz ->
+schedulers.each { clazz ->
     def field = clazz.declaredFields.find { it.name == 'AUDIT_RULES' && Modifier.isStatic(it.modifiers) }
     if (!field) {
         warnings << "${clazz.name}: missing static AUDIT_RULES descriptor"
@@ -99,7 +90,7 @@ def baseMethods = baseClass.declaredMethods
         }
         .sort()
 
-// Methods we expect to exist on the base — drift sensors.
+// Methods we expect to exist on the base.
 def requiredBaseMethods = ['getPreparationIssues', 'logBasicInfo', 'dynamicReconcileRotationUnits', 'getLiveAuditors']
 def declaredBaseMethodNames = baseClass.declaredMethods.collect { it.name } as Set
 def missingBase = requiredBaseMethods.findAll { !declaredBaseMethodNames.contains(it) }
@@ -146,7 +137,7 @@ constantNames.each { name ->
 // ---------------- behavioral fingerprint ----------------
 
 def canonicalForHash = new StringBuilder()
-schedulers.each { Class c ->
+schedulers.each { c ->
     canonicalForHash << c.name << "\n"
     def d = descriptors[c.simpleName]
     if (d instanceof Map) {
@@ -156,7 +147,7 @@ schedulers.each { Class c ->
     }
 }
 constants.each { k, v -> canonicalForHash << "const ${k}=${v}\n" }
-baseMethods.each { canonicalForHash << "base ${it}\n" }
+baseMethods.each { m -> canonicalForHash << "base ${m}\n" }
 
 def digestBytes = MessageDigest.getInstance("SHA-256").digest(canonicalForHash.toString().bytes)
 def fingerprint = digestBytes.encodeHex().toString().substring(0, 12)
@@ -202,12 +193,12 @@ html << '<h3 style="margin-top:24px;border-bottom:2px solid #0052CC;padding-bott
 html << '<p style="color:#5E6C84;">Rows = behavioral rule, columns = audit level. Cells come straight from each scheduler\'s AUDIT_RULES descriptor.</p>'
 html << '<table style="border-collapse:collapse;width:100%;table-layout:fixed;"><tr>'
 html << "<th ${th}>Rule</th>"
-schedulers.each { Class c -> html << "<th ${th}>${esc(c.simpleName)}</th>" }
+schedulers.each { c -> html << "<th ${th}>${esc(c.simpleName)}</th>" }
 html << '</tr>'
 
-allKeys.each { String k ->
+allKeys.each { k ->
     html << "<tr><td ${keyTd}>${esc(k)}</td>"
-    def rowValues = schedulers.collect { Class c ->
+    def rowValues = schedulers.collect { c ->
         def d = descriptors[c.simpleName]
         return (d instanceof Map) ? d[k] : null
     }
@@ -224,7 +215,7 @@ html << '<p style="color:#5E6C84;font-size:12px;">Highlighted rows differ across
 
 // Per-level detail
 html << '<h3 style="margin-top:24px;border-bottom:2px solid #0052CC;padding-bottom:4px;">Per-level detail</h3>'
-schedulers.each { Class c ->
+schedulers.each { c ->
     def d = descriptors[c.simpleName]
     html << "<h4 style=\"margin-top:18px;\">${esc(c.name)}</h4>"
     if (!(d instanceof Map)) {
@@ -232,7 +223,7 @@ schedulers.each { Class c ->
         return
     }
     html << '<table style="border-collapse:collapse;width:100%;">'
-    allKeys.each { String k ->
+    allKeys.each { k ->
         html << "<tr><td ${keyTd}>${esc(k)}</td><td ${td}>${esc(d[k])}</td></tr>"
     }
     html << '</table>'
@@ -242,14 +233,14 @@ schedulers.each { Class c ->
 html << '<h3 style="margin-top:24px;border-bottom:2px solid #0052CC;padding-bottom:4px;">Common base — AuditScheduler</h3>'
 html << '<p style="color:#5E6C84;">Public / protected methods declared on the shared base. New / removed entries are a strong signal that level behavior may have shifted.</p>'
 html << '<table style="border-collapse:collapse;width:100%;"><tr><th ' + th + '>Method</th></tr>'
-baseMethods.each { String m -> html << "<tr><td ${td}><code>${esc(m)}</code></td></tr>" }
+baseMethods.each { m -> html << "<tr><td ${td}><code>${esc(m)}</code></td></tr>" }
 html << '</table>'
 
 // Constants snapshot
 html << '<h3 style="margin-top:24px;border-bottom:2px solid #0052CC;padding-bottom:4px;">KVS constants snapshot</h3>'
 html << '<table style="border-collapse:collapse;width:100%;"><tr>'
 html << "<th ${th}>Constant</th><th ${th}>Value</th></tr>"
-constants.each { String k, String v ->
+constants.each { k, v ->
     html << "<tr><td ${keyTd}>${esc(k)}</td><td ${td}>${esc(v)}</td></tr>"
 }
 html << '</table>'
