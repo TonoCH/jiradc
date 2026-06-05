@@ -9,6 +9,7 @@ import kvs_audits.common.AuditHandlerBase
 import kvs_audits.common.AuditMailer
 import kvs_audits.common.CommonHelper
 import kvs_audits.common.CustomFieldsConstants
+import kvs_audits.common.RotationDataKeys
 import kvs_audits.issueType.Audit
 import kvs_audits.issueType.AuditPreparation
 import kvs_audits.issueType.BaseIssue
@@ -164,20 +165,21 @@ class AuditLevel5Handler extends AuditHandlerBase {
         ]
 
         questions_usages.each { key, data ->
-            data.workplaces = data.workplaces
+            // Normalize rotation-units keys to canonical (migrate legacy workplaces/currentWorkplaceIndex if present).
+            List<String> wps = RotationDataKeys.readUnits(data)
+            RotationDataKeys.writeUnits(data, wps)
 
-            // FIX: usage that got an initial audit already consumed workplaces[0],
-            //      so start its workplace cursor at 1; pool-only usages start at 0.
+            // FIX: usage that got an initial audit already consumed fas[0],
+            //      so start its rotation cursor at 1; pool-only usages start at 0.
             boolean hadInitial = usagesWithInitial.contains(key as String)
-            List wps = (data.workplaces as List) ?: []
             int wpSize = wps.size()
-            data.currentWorkplaceIndex   = (hadInitial && wpSize > 0) ? (1 % wpSize) : 0
+            RotationDataKeys.writeIndex(data, (hadInitial && wpSize > 0) ? (1 % wpSize) : 0)
             data.currentAuditorIndex     = hadInitial ? 1 : 0   // not used by L5 scheduler, kept for JSON consistency
             data.currentCrossAuditorIndex = 0
             data.rotationCount            = 0
             data.crossAuditHistory        = []
 
-            logger.setInfoMessage(">> [INIT] ${key}: hadInitial=${hadInitial}, currentWorkplaceIndex=${data.currentWorkplaceIndex}, workplaces=${data.workplaces}")
+            logger.setInfoMessage(">> [INIT] ${key}: hadInitial=${hadInitial}, currentFaIndex=${data.currentFaIndex}, fas=${data.fas}")
             logger.setInfoMessage(">> [INIT] ${key}: globalAuditorIndex=${initialGlobalAuditorIndex}, auditors=${auditors}")
         }
 

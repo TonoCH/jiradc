@@ -43,7 +43,7 @@ class AuditLevel4Scheduler extends AuditScheduler implements IAuditScheduler {
             crossAudits          : 'Implemented but TEMPORARILY DISABLED (globalCrossPool forced to empty list)',
             onePcPerTick         : false,
             specialQuestions     : 'Per-FA (wpRotation[faKey]); semi-yearly=+6M, yearly=+12M; non-cross only',
-            rotationDataShape    : 'root.{usageTurnIndex, globalAuditorIndex, questions_usages[usageKey].{workplaces, currentWorkplaceIndex, auditors, currentAuditorIndex, rotationCount, crossAuditHistory[], specialQuestions[qKey].wpRotation[faKey].nextRotationDate}}',
+            rotationDataShape    : 'root.{usageTurnIndex, globalAuditorIndex, questions_usages[usageKey].{fas, currentFaIndex, auditors, currentAuditorIndex, rotationCount, crossAuditHistory[], specialQuestions[qKey].wpRotation[faKey].nextRotationDate}}. Legacy keys workplaces/currentWorkplaceIndex are read transparently and migrated on write (RotationDataKeys).',
             notes                : 'Cross-audit candidate every rotationCount % 3 == 0 (gated by global cross pool; one cross-auditor per quarter globally).'
     ]
 
@@ -177,7 +177,9 @@ class AuditLevel4Scheduler extends AuditScheduler implements IAuditScheduler {
     }
 
     private void logDebugUsageState(String usageKey, Map u, Map data) {
-        logger.setInfoMessage(">> [DEBUG] usage=${usageKey}, workplaceIndex=${u.currentWorkplaceIndex}, workplace=${(u.workplaces ? u.workplaces[Math.min((u.currentWorkplaceIndex ?: 0), (u.workplaces.size() - 1))] : 'n/a')}")
+        List<String> dbgUnits = readRotationUnits(u)
+        int dbgIdx = readRotationIndex(u)
+        logger.setInfoMessage(">> [DEBUG] usage=${usageKey}, faIndex=${dbgIdx}, fa=${(dbgUnits ? dbgUnits[Math.min(dbgIdx, dbgUnits.size() - 1)] : 'n/a')}")
         logger.setInfoMessage(">> [DEBUG] usage=${usageKey}, auditorIndex=${u.currentAuditorIndex}, auditor=${(u.auditors ? u.auditors[Math.min((u.currentAuditorIndex ?: 0), (u.auditors.size() - 1))] : 'n/a')}")
         int gIdx = (data?.globalAuditorIndex instanceof Number) ? ((Number) data.globalAuditorIndex).intValue() : 0
         logger.setInfoMessage(">> [DEBUG] globalAuditorIndex=${gIdx}")
@@ -247,8 +249,9 @@ class AuditLevel4Scheduler extends AuditScheduler implements IAuditScheduler {
 /** Reconcile configured vs live FA keys; on empty result update json index and skip. */
     private boolean reconcileWorkplacesOrSkip(AuditLevel4Handler handler, Map data, List<String> usageKeys, int turnIdx,
                                               String usageKey, Map u, List<String> liveSubAreas) {
-        u.workplaces = dynamicReconcileRotationUnits(usageKey, u.workplaces as List<String>, liveSubAreas)
-        if (!u.workplaces) {
+        List<String> reconciled = dynamicReconcileRotationUnits(usageKey, readRotationUnits(u), liveSubAreas)
+        writeRotationUnits(u, reconciled)
+        if (!reconciled) {
             logger.setErrorMessage("No sub-areas remain for ${usageKey} after reconciliation; skipping.")
             data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
             handler.updateRotationData(JsonOutput.toJson(data))
@@ -310,7 +313,7 @@ class AuditLevel4Scheduler extends AuditScheduler implements IAuditScheduler {
     // Pick FA key (and advance index); on empty list update json index and skip (returns null).
     private String pickFunctionalAreaOrSkip(AuditLevel4Handler handler, Map data, List<String> usageKeys, int turnIdx,
                                             String usageKey, Map u) {
-        List<String> wps = (u.workplaces as List<String>) ?: []
+        List<String> wps = readRotationUnits(u)
         if (wps.isEmpty()) {
             logger.setErrorMessage("No sub-areas remain for ${usageKey} after reconciliation; skipping.")
             data.usageTurnIndex = (turnIdx + 1) % usageKeys.size()
@@ -318,10 +321,10 @@ class AuditLevel4Scheduler extends AuditScheduler implements IAuditScheduler {
             return null
         }
 
-        int cur = Math.max(0, (u.currentWorkplaceIndex ?: 0))
+        int cur = Math.max(0, readRotationIndex(u))
         int idx = cur % wps.size()
         String faKey = wps[idx]
-        u.currentWorkplaceIndex = (idx + 1) % wps.size()
+        writeRotationIndex(u, (idx + 1) % wps.size())
         return faKey
     }
 

@@ -9,6 +9,7 @@ import kvs_audits.common.AuditHandlerBase
 import kvs_audits.common.AuditMailer
 import kvs_audits.common.CommonHelper
 import kvs_audits.common.CustomFieldsConstants
+import kvs_audits.common.RotationDataKeys
 import kvs_audits.issueType.Audit
 import kvs_audits.issueType.AuditPreparation
 import kvs_audits.issueType.BaseIssue
@@ -105,20 +106,16 @@ class AuditLevel4Handler extends AuditHandlerBase{
         //def external = auditPreparationIssue.getExternalAuditors()
 
         questions_usages.each { key, data ->
-            //data.subAreas = data.workplaces          // rename
-            //data.currentSubAreaIndex = 0
-            data.workplaces            = data.workplaces
-            data.currentWorkplaceIndex    = 0
-            data.currentAuditorIndex   = 0
-            //data.crossAuditors         = external
+            // Normalize rotation-units keys to canonical (migrate legacy workplaces/currentWorkplaceIndex if present).
+            RotationDataKeys.writeUnits(data, RotationDataKeys.readUnits(data))
+            RotationDataKeys.writeIndex(data, 0)
+            data.currentAuditorIndex      = 0
             data.currentCrossAuditorIndex = 0
-            data.rotationCount         = 0
-            data.crossAuditHistory     = []
+            data.rotationCount            = 0
+            data.crossAuditHistory        = []
 
-            logger.setInfoMessage(">> [INIT] ${key}: currentWorkplaceIndex=${data.currentWorkplaceIndex}, workplaces=${data.workplaces}")
+            logger.setInfoMessage(">> [INIT] ${key}: currentFaIndex=${data.currentFaIndex}, fas=${data.fas}")
             logger.setInfoMessage(">> [INIT] ${key}: currentAuditorIndex=${data.currentAuditorIndex}, auditors=${data.auditors}")
-
-            //data.remove('workplaces')
         }
 
         updateRotationData(JsonOutput.toJson(rotation))

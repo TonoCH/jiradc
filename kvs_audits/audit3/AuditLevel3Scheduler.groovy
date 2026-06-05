@@ -40,8 +40,8 @@ class AuditLevel3Scheduler extends AuditScheduler implements IAuditScheduler {
             crossAudits          : 'Not supported',
             onePcPerTick         : false,
             specialQuestions     : 'Per-FA (faRotation[faKey]); only semi-yearly / yearly are re-scheduled, others removed after use',
-            rotationDataShape    : 'questions_usages[usageKey].{fas|workplaces, currentFaIndex|currentWorkplaceIndex, auditors, currentAuditorIndex, specialQuestions[qKey].faRotation[faKey].nextRotationDate}',
-            notes                : 'FAs sorted ASC by Functional Area Key custom field. Legacy entries may still use \"workplaces\"/\"currentWorkplaceIndex\" keys.'
+            rotationDataShape    : 'questions_usages[usageKey].{fas, currentFaIndex, auditors, currentAuditorIndex, specialQuestions[qKey].faRotation[faKey].nextRotationDate}',
+            notes                : 'FAs sorted ASC by Functional Area Key custom field. Legacy entries with \"workplaces\"/\"currentWorkplaceIndex\" are read transparently and migrated to canonical keys on first write (see RotationDataKeys).'
     ]
 
     AuditLevel3Scheduler() {
@@ -128,31 +128,19 @@ class AuditLevel3Scheduler extends AuditScheduler implements IAuditScheduler {
                 continue;
             }
 
-            //List<Issue> liveFunctionalAreas = jqlSearcher.getFunctionalAreasIssues(profitCenter)
-            //List<String> actualFunctionalAreas = dynamicReconcileRotationUnits(usageKey, usageObj.workplaces as List, liveFunctionalAreas)
-            boolean useFa = usageObj.fas != null ? true : false;
-            boolean useFaIndex = usageObj.currentFaIndex != null ? true : false;
-
-            def usageObjWorkplaces = usageObj.fas != null ? usageObj.fas : usageObj.workplaces;
-
             List<Issue> liveFunctionalAreas   = jqlSearcher.getFunctionalAreasIssues(profitCenter)
             List<String> liveKeys = liveFunctionalAreas*.key
-            List<String> actualFunctionalAreas = dynamicReconcileRotationUnits(usageKey, usageObjWorkplaces as List<String>, liveKeys)
+            List<String> actualFunctionalAreas = dynamicReconcileRotationUnits(usageKey, readRotationUnits(usageObj), liveKeys)
             actualFunctionalAreas = (actualFunctionalAreas ?: []).sort { faIssueKey ->
                 Issue faIssue = liveFunctionalAreas.find { it.key == faIssueKey }
                 String faKeyValue = faIssue ? myBaseUtil.getCustomFieldValue(faIssue, CustomFieldsConstants.FUNCTIONAL_AREA_KEY) : faIssueKey
                 return faKeyValue ?: faIssueKey
             }  // Sort by Functional Area Key ASC (e.g., FA1, FA2, FA3, ...)
 
-            if(useFa)
-                usageObj.fas = actualFunctionalAreas
-            else
-                usageObj.workplaces = actualFunctionalAreas
+            writeRotationUnits(usageObj, actualFunctionalAreas)
             //endregion
 
-            int currentFaIndex = usageObj.currentFaIndex != null ? usageObj.currentFaIndex : usageObj.currentWorkplaceIndex
-            currentFaIndex = currentFaIndex ?: 0
-            int faIndex = Math.min(currentFaIndex ?: 0, actualFunctionalAreas.size() - 1)
+            int faIndex = Math.min(readRotationIndex(usageObj), actualFunctionalAreas.size() - 1)
             int auditorIndex = usageObj.currentAuditorIndex ?: 0
             List<String> functionalAreas = actualFunctionalAreas
             List<String> auditors        = usageObj.auditors as List
@@ -234,12 +222,7 @@ class AuditLevel3Scheduler extends AuditScheduler implements IAuditScheduler {
 
             auditHandler.rotateOneAudit(usageKey, nextFA, nextAuditor, specialQuestionsDue, rotationDay)
 
-            if(useFaIndex) {
-                usageObj.currentFaIndex = (faIndex + 1) % functionalAreas.size()
-            }
-            else {
-                usageObj.currentWorkplaceIndex = (faIndex + 1) % functionalAreas.size()
-            }
+            writeRotationIndex(usageObj, (faIndex + 1) % functionalAreas.size())
 
             List<String> curAuditors = (usageObj.auditors as List<String>) ?: []
             if (curAuditors) {

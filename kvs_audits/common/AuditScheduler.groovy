@@ -78,8 +78,19 @@ class AuditScheduler {
         return reconciledAuditors ? reconciledAuditors[aIndex] : null
     }
 
-    protected String getJsonObjectFasOrWorkplaces(def usageObj){
-        return usageObj.fas != null ? usageObj.fas : usageObj.workplaces;
+    // Rotation-units (FAs / sub-areas) and cursor accessors.
+    // Canonical keys live in RotationDataKeys; legacy aliases are tolerated on read,
+    // and migrated to canonical on write. Applies to Audit Levels 3/4/5.
+    protected List<String> readRotationUnits(def usageObj) {
+        RotationDataKeys.readUnits(usageObj)
     }
-
+    protected int readRotationIndex(def usageObj) {
+        RotationDataKeys.readIndex(usageObj)
+    }
+    protected void writeRotationUnits(def usageObj, List<String> value) {
+        RotationDataKeys.writeUnits(usageObj, value)
+    }
+    protected void writeRotationIndex(def usageObj, int value) {
+        RotationDataKeys.writeIndex(usageObj, value)
+    }
 }

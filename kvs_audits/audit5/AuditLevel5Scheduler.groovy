@@ -49,7 +49,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             crossAudits          : 'Not supported (isCross hard-coded false)',
             onePcPerTick         : true,
             specialQuestions     : 'Per-FA (wpRotation[faKey]); semi-yearly=+6M, yearly=+12M',
-            rotationDataShape    : 'root.{usageTurnIndex, globalAuditorIndex, questions_usages[usageKey].{workplaces, currentWorkplaceIndex, auditors, currentAuditorIndex, rotationCount, specialQuestions[qKey].wpRotation[faKey].nextRotationDate}}',
+            rotationDataShape    : 'root.{usageTurnIndex, globalAuditorIndex, questions_usages[usageKey].{fas, currentFaIndex, auditors, currentAuditorIndex, rotationCount, specialQuestions[qKey].wpRotation[faKey].nextRotationDate}}. Legacy keys workplaces/currentWorkplaceIndex are read transparently and migrated on write (RotationDataKeys).',
             notes                : 'Fixed interval = 15th of each month. AuditPreparation Interval field is hidden / ignored. Each auditor gets exactly one audit per month; each PC at most one per month.'
     ]
 
@@ -244,8 +244,9 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             return
         }
 
-        u.workplaces = dynamicReconcileRotationUnits(usageKey, (u.workplaces as List<String>) ?: [], liveSubAreas)
-        if (!u.workplaces) {
+        List<String> reconciled = dynamicReconcileRotationUnits(usageKey, readRotationUnits(u), liveSubAreas)
+        writeRotationUnits(u, reconciled)
+        if (!reconciled) {
             logger.setErrorMessage("No sub-areas remain for ${usageKey} after reconciliation; skipping pick.")
             return
         }
@@ -261,12 +262,12 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             return
         }
 
-        // Pick FA via per-usage workplace cursor
-        List<String> wps = (u.workplaces as List<String>) ?: []
-        int cur = Math.max(0, (u.currentWorkplaceIndex ?: 0))
+        // Pick FA via per-usage rotation-units cursor
+        List<String> wps = readRotationUnits(u)
+        int cur = Math.max(0, readRotationIndex(u))
         int idx = cur % wps.size()
         String faKey = wps[idx]
-        u.currentWorkplaceIndex = (idx + 1) % wps.size()
+        writeRotationIndex(u, (idx + 1) % wps.size())
 
         List<String> specialDueForThisAudit = computeSpecialDueForFa(u, faKey, rotationDay)
 
