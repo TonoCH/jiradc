@@ -59,9 +59,8 @@ private static String buildLevel1Html() {
 
 /* Print-only report header */
 .l1-report-header { display: block; margin-bottom: 10px; }
-
-.l1-report-header table { width: 100%;  border-collapse: separate;  table-layout: fixed; font-size: 11px; margin-bottom: 8px;}
-.l1-report-header td { padding: 2px 4px; border: 0.6px solid #444; vertical-align: middle; }
+.l1-report-header table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; margin-bottom: 6px;}
+.l1-report-header td {padding: 1.2mm 1.8mm; border: 0.45pt solid #555; vertical-align: middle; line-height: 1.15;}
 
 .l1-rh-label { font-weight: 700; background: #eee; width: 160px; }
 
@@ -73,10 +72,11 @@ private static String buildLevel1Html() {
 }
 
 /* Checklist table */
-.l1-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
-.l1-table th, .l1-table td {
-    border: 1px solid #999; padding: 3px 4px; text-align: center; vertical-align: middle;
-}
+
+.l1-table { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; line-height: 1.15;}
+.l1-table th,
+.l1-table td { border: 0.45pt solid #666; padding: 1.1mm 1.4mm; text-align: center; vertical-align: middle; line-height: 1.15;}
+
 .l1-table thead th { background: #e8e8e8; font-weight: 700; }
 /* Column widths — applied via <col> tags emitted by JS in <colgroup>.
    Defaults; per-size overrides below. */
@@ -86,12 +86,14 @@ col.l1-col-std   { width: 140px; }
 col.l1-col-check { width: 38px; }
 
 /* Body cell tuning */
-.l1-col-id    { min-width: 36px; }
-.l1-col-std   { text-align: left !important; min-width: 110px; }
-.l1-col-text  { text-align: left !important; min-width: 220px; }
-/* Check cell ≈ width of "Mon" (3 chars). Height = single text line. */
-.l1-col-check { padding: 0 1px !important; line-height: 1.1; white-space: nowrap; }
-.l1-table tbody td.l1-col-check { height: 16px; }
+.l1-col-id    { min-width: 34px; }
+.l1-col-std   { text-align: left !important; min-width: 96px; }
+.l1-col-text  { text-align: left !important; min-width: 180px; }
+.l1-col-check { padding: 0 !important; line-height: 1; white-space: nowrap; }
+.l1-table tbody td {  height: 5.2mm; height: auto;}
+.l1-table tbody td.l1-col-check { height: 5.2mm;}
+.l1-text-cell,
+.l1-std-cell { vertical-align: top;}
 
 .l1-std-cell  { text-align: left !important; font-weight: 600; background: #f5f5f5; vertical-align: top; }
 /* Repeated standard label on the 2nd+ row of a group: quieter, so the column
@@ -101,25 +103,25 @@ col.l1-col-check { width: 38px; }
 
 /* Dynamic size classes — JS picks one based on (workplaces × visible days).
    Both font-size and column widths scale together so "Mon" still fits. */
-.l1-size-xl { font-size: 16px; }
-.l1-size-xl col.l1-col-check { width: 44px; }
-.l1-size-xl col.l1-col-id    { width: 48px; }
-.l1-size-xl col.l1-col-std   { width: 165px; }
+.l1-size-xl { font-size: 11px; }
+.l1-size-xl col.l1-col-check { width: 34px; }
+.l1-size-xl col.l1-col-id    { width: 38px; }
+.l1-size-xl col.l1-col-std   { width: 122px; }
 
-.l1-size-lg { font-size: 14px; }
-.l1-size-lg col.l1-col-check { width: 40px; }
-.l1-size-lg col.l1-col-id    { width: 44px; }
-.l1-size-lg col.l1-col-std   { width: 150px; }
+.l1-size-lg { font-size: 10.5px; }
+.l1-size-lg col.l1-col-check { width: 32px; }
+.l1-size-lg col.l1-col-id    { width: 36px; }
+.l1-size-lg col.l1-col-std   { width: 116px; }
 
-.l1-size-md { font-size: 12px; }
-.l1-size-md col.l1-col-check { width: 38px; }
-.l1-size-md col.l1-col-id    { width: 42px; }
-.l1-size-md col.l1-col-std   { width: 140px; }
+.l1-size-md { font-size: 10px; }
+.l1-size-md col.l1-col-check { width: 30px; }
+.l1-size-md col.l1-col-id    { width: 34px; }
+.l1-size-md col.l1-col-std   { width: 108px; }
 
-.l1-size-sm { font-size: 10px; }
-.l1-size-sm col.l1-col-check { width: 34px; }
-.l1-size-sm col.l1-col-id    { width: 38px; }
-.l1-size-sm col.l1-col-std   { width: 120px; }
+.l1-size-sm { font-size: 9px; }
+.l1-size-sm col.l1-col-check { width: 28px; }
+.l1-size-sm col.l1-col-id    { width: 32px; }
+.l1-size-sm col.l1-col-std   { width: 100px; }
 
 /* Print header — Responsible-person sub-table (per workplace) */
 .l1-rh-resp        { margin-top: 4px; }
@@ -144,50 +146,80 @@ col.l1-col-check { width: 38px; }
 
 /* Print overrides */
 @media print {
+
+    col.l1-col-id    { width: 10mm !important; }
+    col.l1-col-std   { width: 30mm !important; }
+    col.l1-col-check { width: 6.2mm !important; }
+
     .l1-filter-bar { display: none !important; }
     .l1-page { box-shadow: none; padding: 0; border-radius: 0; }
+
     .l1-report-header { display: block; }
-    
-    .l1-table { table-layout: fixed !important; width: 100% !important; }
+
+    .l1-table {
+        table-layout: fixed !important;
+        width: 100% !important;
+    }
 
     .l1-table thead th {
-        background: #e0e0e0 !important; 
-        white-space: normal !important;   /* enables wrapping */
-        word-break: break-word !important; /* splits very long tokens */
-        max-width: 120px !important;       /* constrain width of WP headers */
-        overflow-wrap: break-word !important;
-        border: 0.6px solid #444 !important; 
-        font-weight: 700; 
+        background: #e9e9e9 !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+        border: 0.45pt solid #555 !important;
+        font-weight: 700;
+        padding: 1.0mm 1.2mm !important;
+        line-height: 1.1 !important;
+        max-width: 22mm;
     }
 
+    .l1-table th,
+    .l1-table td {
+        border: 0.45pt solid #555 !important;
+        padding: 0.95mm 1.1mm !important;
+        line-height: 1.1 !important;
+    }
 
     .l1-std-cell {
-        background: #f5f5f5 !important;
-        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        background: #f3f3f3 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
+
     .l1-cell-disabled {
-        background: repeating-linear-gradient(45deg,#ccc,#ccc 2px,#e0e0e0 2px,#e0e0e0 5px) !important;
-        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        background: repeating-linear-gradient(45deg,#d7d7d7,#d7d7d7 2px,#ececec 2px,#ececec 5px) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
     .wp-last {
-        border-right: 2.5px solid #000 !important;
+        border-right: 1.1pt solid #333 !important;
     }
 
+    .l1-hint {
+        background: #fff !important;
+        border-left: 1.2pt solid #444 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 
-    .l1-col-check { padding: 0 1px !important; }
-    /* col widths come from the colgroup + size-class rules above */
-    .l1-hint { background: #fff !important; border-left: 2px solid #444 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
-    /* Paper size + orientation are injected at print time by JS
-       (see #l1-page-style below). Margin kept here as fallback. */
-    @page { margin: 6mm; }
-
-    /* Keep the signature row whole — never split it across a page break. */
-    .l1-signature-row, .l1-signature-row td {
+    .l1-signature-row,
+    .l1-signature-row td {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
     }
+
+    /* --- PAPER MODES --- */
+    .l1-paper-a4-landscape .l1-table { font-size: 8.7pt !important; }
+    .l1-paper-a4-landscape .l1-report-header table { font-size: 8.5pt !important; }
+
+    .l1-paper-a3-landscape .l1-table { font-size: 9.2pt !important; }
+    .l1-paper-a3-landscape .l1-report-header table { font-size: 9pt !important; }
+
+    .l1-paper-a3-portrait .l1-table { font-size: 8.9pt !important; }
+    .l1-paper-a3-portrait .l1-report-header table { font-size: 8.7pt !important; }
+
+    @page { margin: 6mm; }
 }
 </style>
 

@@ -917,6 +917,14 @@ AJS.toInit(function () {
 
     var lastChecklistData = null; // cached data to avoid re-fetch on day filter change
 
+    if (selPaper) {
+      selPaper.addEventListener('change', function () {
+        l1ApplyPaperClass();
+      });
+    }
+
+    l1ApplyPaperClass();
+
     // set default Monday date
     inpDate.value = l1CurrentMonday();
 
@@ -989,9 +997,17 @@ AJS.toInit(function () {
     }
 
     btnPrint.addEventListener('click', function () {
+      l1ApplyPaperClass();
+      l1ForcePrintSize();
       l1ApplyPageStyle();
       window.print();
     });
+
+
+    window.addEventListener('afterprint', function () {
+      l1RestorePrintSize();
+    });
+
 
     // ── Load & render checklist ──
     function l1LoadChecklist() {
@@ -1163,6 +1179,7 @@ AJS.toInit(function () {
       h += '</tr>';
       h += '</tbody></table>';
       tableWrap.innerHTML = h;
+      l1ApplyPaperClass();
 
       reportFooter.style.display = 'flex';
       document.getElementById('l1-footerDate').textContent =
@@ -1205,6 +1222,53 @@ AJS.toInit(function () {
 
       reportHeader.innerHTML = h;
     }
+
+    function l1ForcePrintSize() {
+        var tbl = document.querySelector('.l1-table');
+        if (!tbl) return;
+
+        var original =
+          tbl.classList.contains('l1-size-xl') ? 'l1-size-xl' :
+          tbl.classList.contains('l1-size-lg') ? 'l1-size-lg' :
+          tbl.classList.contains('l1-size-md') ? 'l1-size-md' :
+          tbl.classList.contains('l1-size-sm') ? 'l1-size-sm' : '';
+
+        tbl.setAttribute('data-orig-size', original);
+
+        tbl.classList.remove('l1-size-xl', 'l1-size-lg', 'l1-size-md', 'l1-size-sm');
+        tbl.classList.add('l1-size-md');
+    }
+
+    function l1RestorePrintSize() {
+        var tbl = document.querySelector('.l1-table');
+        if (!tbl) return;
+
+        var original = tbl.getAttribute('data-orig-size');
+        tbl.classList.remove('l1-size-xl', 'l1-size-lg', 'l1-size-md', 'l1-size-sm');
+        if (original) tbl.classList.add(original);
+    }
+
+    function l1ApplyPaperClass() {
+        var page = document.querySelector('.l1-page');
+        if (!page) return;
+
+        page.classList.remove(
+            'l1-paper-a4-landscape',
+            'l1-paper-a3-landscape',
+            'l1-paper-a3-portrait'
+        );
+
+        var val = (selPaper && selPaper.value) || 'A4-landscape';
+
+        if (val === 'A4-landscape') {
+            page.classList.add('l1-paper-a4-landscape');
+        } else if (val === 'A3-landscape') {
+            page.classList.add('l1-paper-a3-landscape');
+        } else if (val === 'A3-portrait') {
+            page.classList.add('l1-paper-a3-portrait');
+        }
+    }
+
   }
 
 });
