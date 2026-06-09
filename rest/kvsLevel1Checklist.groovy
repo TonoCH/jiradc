@@ -93,7 +93,10 @@ col.l1-col-check { width: 38px; }
 .l1-col-check { padding: 0 1px !important; line-height: 1.1; white-space: nowrap; }
 .l1-table tbody td.l1-col-check { height: 16px; }
 
-.l1-std-cell  { text-align: left !important; font-weight: 600; background: #f5f5f5; }
+.l1-std-cell  { text-align: left !important; font-weight: 600; background: #f5f5f5; vertical-align: top; }
+/* Repeated standard label on the 2nd+ row of a group: quieter, so the column
+   reads as "category continues" rather than loud repetition. */
+.l1-std-cont  { font-weight: 400 !important; font-size: 0.82em; color: #888; }
 .l1-text-cell { text-align: left !important; }
 
 /* Dynamic size classes — JS picks one based on (workplaces × visible days).
@@ -184,14 +187,6 @@ col.l1-col-check { width: 38px; }
     .l1-signature-row, .l1-signature-row td {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
-    }
-
-    /* Keep each Standard group together when it fits on a page. The standard
-       label is repeated per row (see JS), so correctness no longer depends
-       on this — it just avoids unnecessary mid-group breaks. */
-    .l1-grp {
-        break-inside: avoid;
-        page-break-inside: avoid;
     }
 }
 </style>

@@ -1132,9 +1132,14 @@ AJS.toInit(function () {
           var q = grp.items[qi];
           var qActive = q.day ? [q.day] : L1_DAYS;
 
+          // Standard label repeated on every row (so it never vanishes at a
+          // page break). First row of the group leads in bold; the rest are
+          // shown quietly via .l1-std-cont so the column reads as one block.
+          var stdContCls = (qi === 0) ? '' : ' l1-std-cont';
+
           h += '<tr>';
           h += '<td class="l1-col-id">' + escapeHtml(q.id) + '</td>';
-          h += '<td class="l1-std-cell l1-col-std">'
+          h += '<td class="l1-std-cell l1-col-std' + stdContCls + '">'
             + escapeHtml(grp.standard) + '</td>';
           h += '<td class="l1-text-cell l1-col-text">' + escapeHtml(q.text) + '</td>';
           for (var wi = 0; wi < wp.length; wi++) {
