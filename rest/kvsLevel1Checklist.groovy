@@ -176,9 +176,22 @@ col.l1-col-check { width: 38px; }
     /* col widths come from the colgroup + size-class rules above */
     .l1-hint { background: #fff !important; border-left: 2px solid #444 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-    @page { size: landscape; margin: 6mm; }
+    /* Paper size + orientation are injected at print time by JS
+       (see #l1-page-style below). Margin kept here as fallback. */
+    @page { margin: 6mm; }
+
+    /* Keep the signature row whole — never split it across a page break. */
+    .l1-signature-row, .l1-signature-row td {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
 }
 </style>
+
+<!-- Dynamic @page rule target. JS rewrites this element's content right
+     before window.print() to set the chosen paper size + orientation.
+     Placed after the main stylesheet so its @page wins the cascade. -->
+<style id="l1-page-style"></style>
 
 <!-- ═══ Filter Bar ═══ -->
 <div class="l1-filter-bar">
@@ -211,6 +224,14 @@ col.l1-col-check { width: 38px; }
             <option value="DE">Deutsch</option>
             <option value="EN">English</option>
             <option value="SK">Slovenčina</option>
+        </select>
+    </div>
+    <div class="l1-filter-group">
+        <label>Paper / Orientation</label>
+        <select id="l1-selPaper">
+            <option value="A4-landscape">A4 — on landscape</option>
+            <option value="A3-landscape">A3 — on landscape</option>
+            <option value="A3-portrait">A3 — on portrait</option>
         </select>
     </div>
     <div class="l1-spacer"></div>

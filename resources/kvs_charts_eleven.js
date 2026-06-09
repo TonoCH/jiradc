@@ -900,6 +900,7 @@ AJS.toInit(function () {
     var selFA       = document.getElementById('l1-selFA');
     var selDay      = document.getElementById('l1-selDay');
     var selLang     = document.getElementById('l1-selLang');
+    var selPaper    = document.getElementById('l1-selPaper');
     var inpDate     = document.getElementById('l1-inpDate');
     var btnLoad     = document.getElementById('l1-btnLoad');
     var btnPrint    = document.getElementById('l1-btnPrint');
@@ -973,7 +974,24 @@ AJS.toInit(function () {
     }
 
     btnLoad.addEventListener('click', l1LoadChecklist);
-    btnPrint.addEventListener('click', function () { window.print(); });
+
+    // Set the @page rule from the Paper/Orientation selector, then print.
+    function l1ApplyPageStyle() {
+      var val = (selPaper && selPaper.value) || 'A4-landscape';
+      var parts = val.split('-');              // e.g. ["A3","portrait"]
+      var size = parts[0] || 'A4';             // A4 | A3
+      var orient = parts[1] || 'landscape';    // landscape | portrait
+      var st = document.getElementById('l1-page-style');
+      if (st) {
+        st.textContent =
+          '@media print { @page { size: ' + size + ' ' + orient + '; margin: 6mm; } }';
+      }
+    }
+
+    btnPrint.addEventListener('click', function () {
+      l1ApplyPageStyle();
+      window.print();
+    });
 
     // ── Load & render checklist ──
     function l1LoadChecklist() {
