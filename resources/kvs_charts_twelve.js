@@ -1119,22 +1119,23 @@ AJS.toInit(function () {
       }
       h += '</tr></thead>';
 
-      // TBODY \u2014 single row per question (no more i.O./n.i.O. label rows)
-      h += '<tbody>';
+      // TBODY — single row per question. The Standard label is repeated in
+      // every row (instead of one merged rowspan cell) so it stays visible on
+      // every printed page, no matter how large the group is or where the page
+      // breaks. Each group sits in its own <tbody class="l1-grp"> so it stays
+      // together when it happens to fit on one page.
       for (var gi = 0; gi < groups.length; gi++) {
         var grp = groups[gi];
-        var stdSpan = grp.items.length;
 
+        h += '<tbody class="l1-grp">';
         for (var qi = 0; qi < grp.items.length; qi++) {
           var q = grp.items[qi];
           var qActive = q.day ? [q.day] : L1_DAYS;
 
           h += '<tr>';
           h += '<td class="l1-col-id">' + escapeHtml(q.id) + '</td>';
-          if (qi === 0) {
-            h += '<td rowspan="' + stdSpan + '" class="l1-std-cell l1-col-std">'
-              + escapeHtml(grp.standard) + '</td>';
-          }
+          h += '<td class="l1-std-cell l1-col-std">'
+            + escapeHtml(grp.standard) + '</td>';
           h += '<td class="l1-text-cell l1-col-text">' + escapeHtml(q.text) + '</td>';
           for (var wi = 0; wi < wp.length; wi++) {
             for (var di = 0; di < visDays.length; di++) {
@@ -1144,16 +1145,17 @@ AJS.toInit(function () {
           }
           h += '</tr>';
         }
+        h += '</tbody>';
       }
 
-      // Signature row
+      // Signature row in its own tbody so it never splits across a page break.
+      h += '<tbody>';
       h += '<tr class="l1-signature-row">';
       h += '<td colspan="3" class="l1-signature-label">' + escapeHtml(t.signature) + '</td>';
       for (var wi = 0; wi < wp.length; wi++) {
         h += '<td colspan="' + visDays.length + '"></td>';
       }
       h += '</tr>';
-
       h += '</tbody></table>';
       tableWrap.innerHTML = h;
 

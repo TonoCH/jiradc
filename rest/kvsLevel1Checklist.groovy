@@ -73,7 +73,7 @@ private static String buildLevel1Html() {
 }
 
 /* Checklist table */
-.l1-table { width: 100%; border-collapse: separate; font-size: 12px; table-layout: fixed; }
+.l1-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
 .l1-table th, .l1-table td {
     border: 1px solid #999; padding: 3px 4px; text-align: center; vertical-align: middle;
 }
@@ -184,6 +184,14 @@ col.l1-col-check { width: 38px; }
     .l1-signature-row, .l1-signature-row td {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
+    }
+
+    /* Keep each Standard group together when it fits on a page. The standard
+       label is repeated per row (see JS), so correctness no longer depends
+       on this — it just avoids unnecessary mid-group breaks. */
+    .l1-grp {
+        break-inside: avoid;
+        page-break-inside: avoid;
     }
 }
 </style>
