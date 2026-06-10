@@ -4,7 +4,6 @@ package kvs_audits.common
  * RotationDataKeys
  * @author chabrecek.anton
  * Created on 05/06/2026.
- */
  * Rotation-unit aliases for AuditPreparation.
  *
  * Writes always use the first (canonical) value.

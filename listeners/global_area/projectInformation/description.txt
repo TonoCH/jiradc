@@ -1,0 +1,26 @@
+ZADANIE: Co je potrebne spravit je globalny listener ktory nastavuje field "Project Information n"(18702) Multiple choices select list - aj ked zvoleny je len 1 field.
+         Listener sa bude volat pri create a update a delete.
+         listener bude volat triedu ProjectInformationHandler.
+         Trieda bude mat konstruktor s povinnym parametrom, bud tam bude hodnota FUEL alebo OTHER.. Podla toho bude prebiehat dedenia a nastavovanie, podla tohto parametra.
+
+         Rozdiel medzi FUEL a Other bude v distribucii hodnoty pre field 18702.
+         Najskôr ak bude hodnota FUEL pre field 18702 distribuovala hodnota z najvyssieho parenta na najnizsi child.
+         Casto najvyssi parent je Initiative, ale moze to byt aj feature alebo Epic, pripadne Story / Task..
+         Vsetky uzivatelske upravi na childoch budu prepisane hodnotov na parentovi, teda ak existuje vazba, ak nie berie sa issue ako parent, az do casu kym vazba nevznikne.
+
+         Ak je hodnota OTHER tak tato distribucia bude tiez zhora nadol, ale moze byt prerusena ak predtým na niektorom issue vybral uzivatel zamerne inu hodnotu(tato hodnota sa distribuuje dole)
+
+
+         Podme si to teraz dalej rozobrat.
+         Ak sa zisti listener udalost.Urci sa ci najskôr aka udalost sa stala ci je to vytvorenie, alebo update alebo delete issue.
+
+         Ak create:
+         Tu sa zisti ci ma parenta, alebo epic link ak ma tak sa pre field 18702 nastavi rovnaka hodnota z parenta / epicu
+
+         Pri update: zistime ci sa zmena tyka fielda field 18702 ak ano urcime ci toto je uplne top issue, ak je distribuujeme zmenu nadol, ak nie tak zmenu nepovolime, respektíve prepiseme uzivatelsku hodnotu, aby nemohla byt menena, pripadne zakazeme priamo upravu na behaviour - vymysli co je najlepsie...
+         Taktiez pri update kontrolujeme aj field Epic link(10001) alebo parent link(10301), ci nedoslo k zmene na tychtpo fieldoch ak ano, tak vieme ze musíme skontrolovat hodnotu na novom ci uz epic, alebo parent linku a distribuovat tuto hodnotu dole.
+
+         Pri delete: Ak toto issue ma potomkov, tak vymazeme na vsetkych potomkoch field 18702
+         ---------------
+         FUEL toto spravanie iba pre projekty ktore maju Project category = kategoria striktne nastavena pre FUEL Projects - toto musi listener overit.
+         Ostatna logika ide do tej triedy ProjectInformationHandler. Trieda musi byt pisana prehladne, rozdelena do dolezitych metod a logich, komentáre minimalne, ked je kod prehladny nie su potrebne. Premenne nazvy celym slovom, moze byt ciastone skratene, nepouzivaj 1 alebo 2 pismenove nazvy premenných, mimo cyklov, alebo nasobicov..Ak nieco viac potrebujes pytaj sa.

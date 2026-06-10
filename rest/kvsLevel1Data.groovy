@@ -119,7 +119,7 @@ kvsLevel1Data(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
                 // Build Question Usage key for Level 2
                 String pcKeyValue = myBaseUtil.getCustomFieldValue(pcIssue, CustomFieldsConstants.PROFIT_CENTER_KEY) ?: ""
                 String faKeyValue = myBaseUtil.getCustomFieldValue(faIssue, CustomFieldsConstants.FUNCTIONAL_AREA_KEY) ?: ""
-                String usageKey = faKeyValue ? "${pcKeyValue}_${faKeyValue}_Level_2" : "${pcKeyValue}_Level_2"
+                String usageKey = faKeyValue ? "${pcKeyValue}_${faKeyValue}_Level_1" : "${pcKeyValue}_Level_1"
 
                 // Fetch questions from KVSAQ project
                 String qJql = """
