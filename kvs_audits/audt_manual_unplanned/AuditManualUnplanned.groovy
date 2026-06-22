@@ -72,7 +72,10 @@ class AuditManualUnplanned {
         }
 
         audit.setAuditId()
-        audit.commitIssueUpdate()
+        // Commit as jira.bot — Audit_ID guard in kvs_listener.groovy reverts
+        // any non-bot edit of this field; committing under the logged-in user
+        // would race with the listener and leave the field empty.
+        audit.commitIssueUpdateAsBot()
         logger.setInfoMessage("Manual Audit ${auditIssue.key}: Audit_ID set.")
 
         int created = 0
@@ -108,12 +111,15 @@ class AuditManualUnplanned {
 
         // SET AUDIT ID
         audit.setAuditId()
-        audit.commitIssueUpdate()
+        // See note in createManualQuestions: Audit_ID must be persisted as jira.bot
+        // or the listener guard reverts it back to empty.
+        audit.commitIssueUpdateAsBot()
         logger.setInfoMessage("Unplanned Audit ${auditIssue.key}: Audit_ID set.")
 
         boolean isL2 = (level == CustomFieldsConstants.AUDIT_LEVEL_2)
         boolean isL3 = (level == CustomFieldsConstants.AUDIT_LEVEL_3)
         boolean isL4 = (level == CustomFieldsConstants.AUDIT_LEVEL_4)
+        boolean isL5 = (level == CustomFieldsConstants.AUDIT_LEVEL_5)
 
         if (isL2) {
             if (!functionalArea) {
@@ -136,6 +142,13 @@ class AuditManualUnplanned {
 
         CommonHelper helper = new CommonHelper()
         int generated = 0
+
+        if (isL5) {
+            // L5 mirrors L4: questions are generated on the ToDo -> In Progress
+            // workflow transition (via KVS Generation Payload), not at create time.
+            logger.setInfoMessage("Unplanned Audit for issue ${auditIssue.key}: For LEVEL 5 question generation is deferred to the workflow step.")
+            return;
+        }
 
         if (isL4) { //disable question creation, move it to workflow todo - > in progress step
             /*List<String> usages = helper.buildQuestionUsageKeys(profitCenter, functionalArea, level) ?: []

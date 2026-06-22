@@ -48,4 +48,12 @@ public class BaseIssue {
     void commitIssueUpdate(EventDispatchOption dispatchOption = EventDispatchOption.ISSUE_UPDATED) {
         ComponentAccessor.issueManager.updateIssue(loggedInUser, issue, dispatchOption, false)
     }
+
+    // Commit under jira.bot so listeners that restrict edits to the bot
+    // (e.g. Audit_ID guard in kvs_listener.groovy) don't revert the change.
+    void commitIssueUpdateAsBot(EventDispatchOption dispatchOption = EventDispatchOption.ISSUE_UPDATED) {
+        def jiraBot = ComponentAccessor.userManager.getUserByName("jira.bot")
+        def actor = jiraBot ?: loggedInUser
+        ComponentAccessor.issueManager.updateIssue(actor, issue, dispatchOption, false)
+    }
 }
