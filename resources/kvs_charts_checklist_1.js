@@ -42,6 +42,9 @@ AJS.toInit(function () {
     if (refreshBtn) refreshBtn.addEventListener('click', loadChartsData);
     if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
 
+    var liveBtn = document.getElementById('kvs-live-refresh-btn');
+    if (liveBtn) liveBtn.addEventListener('click', loadLiveOverlay);
+
     ensureChartJsLoaded()
       .then(loadChartsData)
       .catch(err => console.error(err));
@@ -78,11 +81,59 @@ AJS.toInit(function () {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  //  Live overlay (prototype) — recompute current week from Jira state
+  //  WITHOUT touching the snapshot-based charts.
+  // ═══════════════════════════════════════════════════════════════════
+
+  function loadLiveOverlay() {
+    var pcSel = document.getElementById('kvs-pc-select');
+    var pcKey = pcSel ? pcSel.value : 'overall';
+    var host = document.getElementById('overallLiveGauge');
+    var btn = document.getElementById('kvs-live-refresh-btn');
+    if (!host) return;
+
+    host.style.display = 'block';
+    host.innerHTML = '<div style="font-size:12px;color:#6B778C;text-align:center;padding:8px;">Loading live (today)…</div>';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Live'; }
+
+    var url = AJS.contextPath()
+      + '/rest/scriptrunner/latest/custom/kvsChartsLive'
+      + '?pcKey=' + encodeURIComponent(pcKey);
+
+    fetch(url, { method: 'GET', credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || data.error) {
+          host.innerHTML = '<div style="font-size:12px;color:#FF5630;text-align:center;padding:8px;">Live error: '
+            + escapeHtml((data && data.error) || 'unknown') + '</div>';
+          return;
+        }
+        var pct = toNumber(data.performancePct);
+        host.innerHTML =
+          '<div class="kvs-gauge-label">Today (live) · W' + escapeHtml(data.week || '-') + '</div>'
+          + buildGaugeSvg(pct, { width: 220 })
+          + '<div class="kvs-gauge-sub">Questions: <strong>' + toNumber(data.questionsCount) + '</strong>'
+          + ' · computed in ' + toNumber(data.elapsedMs) + ' ms</div>';
+      })
+      .catch(function (err) {
+        host.innerHTML = '<div style="font-size:12px;color:#FF5630;text-align:center;padding:8px;">Live fetch failed: '
+          + escapeHtml(String(err)) + '</div>';
+      })
+      .then(function () {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 Live'; }
+      });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   //  Top-level render
   // ═══════════════════════════════════════════════════════════════════
 
   function renderAll(data) {
     destroyAllCharts();
+
+    // Hide stale live overlay — values were computed for the previous scope
+    var liveHost = document.getElementById('overallLiveGauge');
+    if (liveHost) { liveHost.style.display = 'none'; liveHost.innerHTML = ''; }
 
     const pcLabel = resolvePcLabel(data);
     const trend = Array.isArray(data.trend) ? data.trend : [];

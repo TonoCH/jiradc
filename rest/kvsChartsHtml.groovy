@@ -169,10 +169,17 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
     <div class="chart-grid">
 
       <div class="chart-card">
-        <h3>Overall Performance</h3>
+        <h3>Overall Performance
+          <button id="kvs-live-refresh-btn" type="button"
+                  style="float:right;font-size:11px;padding:2px 8px;cursor:pointer;"
+                  title="Recalculate from today's Jira state (slower, ignores snapshot)">
+            🔄 Live
+          </button>
+        </h3>
         <div id="overallGauge" class="kvs-gauge-wrap"></div>
+        <div id="overallLiveGauge" class="kvs-gauge-wrap" style="display:none;border-top:1px dashed #DFE1E6;margin-top:8px;padding-top:8px;"></div>
         <div id="overallBreakdown" class="kvs-overall-breakdown"></div>
-        <div class="chart-desc">Rolling KPI across the selected window. Red &lt; 75%, Yellow 75–90%, Green &ge; 90%.</div>
+        <div class="chart-desc">Rolling KPI across the selected window. Red &lt; 75%, Yellow 75–90%, Green &ge; 90%. <em>Live</em> = recomputed from today's Jira state.</div>
         <details class="src-details" data-src-key="overallGauge"></details>
       </div>
 
