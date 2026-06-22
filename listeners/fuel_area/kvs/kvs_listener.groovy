@@ -33,6 +33,32 @@ ApplicationUser jiraBot = ComponentAccessor.getUserManager().getUserByName("jira
 if (actualIssue?.issueType?.name == CustomFieldsConstants.AUDIT) {
     def auditIdCf =Audit.AUDIT_ID_FIELD;// CustomFieldsConstants.getCustomFieldByName(Audit.AUDIT_ID_FIELD_NAME)
 
+    // region Audit_ID backfill — guarantees Audit_ID is always populated.
+    // Runs on both ISSUE_CREATED and ISSUE_UPDATED so existing Audit issues
+    // with empty Audit_ID are repaired by any subsequent update. Writes the
+    // value as jira.bot with DO_NOT_DISPATCH so the guard block above does
+    // not see it as an unauthorized change and no event recursion occurs.
+    if (auditIdCf && (event.eventTypeId == EventType.ISSUE_CREATED_ID
+            || event.eventTypeId == EventType.ISSUE_UPDATED_ID)) {
+        try {
+            def currentAuditId = actualIssue.getCustomFieldValue(auditIdCf)
+            boolean isEmpty = (currentAuditId == null) || (currentAuditId.toString().trim().isEmpty())
+            if (isEmpty) {
+                def expected = new MyBaseUtil().getIssueKeyNumberPart(actualIssue)
+                if (expected != null && jiraBot) {
+                    def mutable = ComponentAccessor.issueManager.getIssueObject(actualIssue.id)
+                    mutable.setCustomFieldValue(auditIdCf, expected)
+                    ComponentAccessor.issueManager.updateIssue(jiraBot, mutable,
+                            EventDispatchOption.DO_NOT_DISPATCH, false)
+                    log.warn("Audit listener: Audit_ID backfilled on ${actualIssue.key} -> ${expected}")
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Audit listener: Audit_ID backfill failed on ${actualIssue.key}: ${e.message}")
+        }
+    }
+    // endregion
+
     if (event.eventTypeId == EventType.ISSUE_UPDATED_ID) {
         //region allow only jira.bot edit audit id
         if (!auditIdCf) {
