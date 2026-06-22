@@ -1064,8 +1064,27 @@ AJS.toInit(function () {
         wp = [{ name: data.functionalArea.name }];
       }
 
+      // Single-workplace mode: expand the lone WP into 5 consecutive weeks
+      // (starting from the picked Monday). Each "virtual" WP becomes one
+      // calendar week so the same printout covers 5 weeks of audits.
+      // Everything downstream (colgroup/thead/tbody/signature/responsible row)
+      // iterates over `wp` and so adapts automatically.
+      var weekModeWpName = null;
+      if (wp.length === 1 && dateStr) {
+        weekModeWpName = wp[0].name;
+        var baseDate = new Date(dateStr + 'T00:00:00');
+        var expanded = [];
+        for (var wkI = 0; wkI < 5; wkI++) {
+          var d = new Date(baseDate);
+          d.setDate(d.getDate() + wkI * 7);
+          var cwNum = l1GetKW(d.toISOString().slice(0, 10));
+          expanded.push({ name: 'CW ' + cwNum });
+        }
+        wp = expanded;
+      }
+
       // print header (after wp finalized so Responsible-person row aligns)
-      l1BuildPrintHeader(data, kw, dateStr, wp, visDays, t);
+      l1BuildPrintHeader(data, kw, dateStr, wp, visDays, t, weekModeWpName);
 
       // hint above the checklist (visible on screen + printout)
       if (hintBox) {
@@ -1187,7 +1206,7 @@ AJS.toInit(function () {
     }
 
     // ── Print header (visible only in @media print) ──
-    function l1BuildPrintHeader(data, kw, dateStr, wp, visDays, t) {
+    function l1BuildPrintHeader(data, kw, dateStr, wp, visDays, t, weekModeWpName) {
       var pcTxt  = selPC.options[selPC.selectedIndex] ? selPC.options[selPC.selectedIndex].text : '';
       var faTxt  = selFA.options[selFA.selectedIndex] ? selFA.options[selFA.selectedIndex].text : '';
       var dayTxt = selDay.options[selDay.selectedIndex] ? selDay.options[selDay.selectedIndex].text : 'All';
@@ -1195,14 +1214,27 @@ AJS.toInit(function () {
         ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB')
         : '';
 
+      // In 5-week mode the column headers carry CWs of the whole range,
+      // so show the range in the "Calendar week" field instead of a single CW.
+      var kwTxt = 'CW ' + kw;
+      if (weekModeWpName && dateStr) {
+        var endDate = new Date(dateStr + 'T00:00:00');
+        endDate.setDate(endDate.getDate() + 4 * 7);
+        var kwEnd = l1GetKW(endDate.toISOString().slice(0, 10));
+        kwTxt = 'CW ' + kw + ' – CW ' + kwEnd;
+      }
+
       var h = '<table>';
       h += '<tr><td class="l1-rh-label">' + escapeHtml(t.profitCenter) + ':</td><td>' + escapeHtml(pcTxt) + '</td>';
-      h += '<td class="l1-rh-label">' + escapeHtml(t.calendarWeek) + ':</td><td>CW ' + kw + '</td></tr>';
+      h += '<td class="l1-rh-label">' + escapeHtml(t.calendarWeek) + ':</td><td>' + escapeHtml(kwTxt) + '</td></tr>';
       h += '<tr><td class="l1-rh-label">' + escapeHtml(t.functionalArea) + ':</td><td>' + escapeHtml(faTxt) + '</td>';
       h += '<td class="l1-rh-label">' + escapeHtml(t.mondayDate) + ':</td><td>' + dateFmt + '</td></tr>';
       h += '<tr><td class="l1-rh-label">' + escapeHtml(t.kvsLevel) + ':</td><td>1</td>';
       h += '<td class="l1-rh-label">' + escapeHtml(t.dayFilter) + ':</td><td>' + escapeHtml(dayTxt) + '</td></tr>';
       h += '<tr><td class="l1-rh-label">' + escapeHtml(t.questionUsage) + ':</td><td colspan="3">' + escapeHtml(data.usageKey) + '</td></tr>';
+      if (weekModeWpName) {
+        h += '<tr><td class="l1-rh-label">Workplace:</td><td colspan="3">' + escapeHtml(weekModeWpName) + '</td></tr>';
+      }
       h += '</table>';
 
       // Per-workplace Responsible-person row — filled in by hand after printout
