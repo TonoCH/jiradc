@@ -197,8 +197,21 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
 
         // Advance global pointers AFTER picks succeed/fail (we always move forward to avoid infinite loop)
         int picks = pickedUsages.size()
-        data.usageTurnIndex = (turnIdx + attempts) % usagePcMap.size()
-        data.globalAuditorIndex = (gIdx + picks) % auditorCount
+        int newGIdx = (gIdx + picks) % auditorCount
+
+        // Bug #1 fix: advancing usageTurnIndex by `attempts` wraps to 0 whenever
+        // picks divides |PCs|, freezing the auditor→PC mapping across months
+        // (e.g. 4 auditors × 4 PCs, or 4 auditors × 2 PCs). To guarantee every
+        // auditor eventually visits every PC, shift the PC ring by 1 each time
+        // the auditor round-robin completes a full cycle (gIdx wraps to 0).
+        // This produces a Latin-square traversal regardless of A/P ratio.
+        int newTurnIdx = turnIdx
+        if (picks > 0 && newGIdx == 0) {
+            newTurnIdx = (turnIdx + 1) % usagePcMap.size()
+        }
+
+        data.usageTurnIndex = newTurnIdx
+        data.globalAuditorIndex = newGIdx
         data.questions_usages = usages
         handler.updateRotationData(JsonOutput.toJson(data))
 
@@ -267,12 +280,14 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         int cur = Math.max(0, readRotationIndex(u))
         int idx = cur % wps.size()
         String faKey = wps[idx]
-        writeRotationIndex(u, (idx + 1) % wps.size())
 
         List<String> specialDueForThisAudit = computeSpecialDueForFa(u, faKey, rotationDay)
 
         logger.setInfoMessage("RotationJob(L5): usage=${usageKey}, subArea=${faKey}, auditor=${forcedAuditor}, cross=${isCross}")
+        // Bug #4 fix: advance the FA cursor only after rotateOneAudit succeeds,
+        // so a thrown validation/create error does not permanently skip an FA.
         handler.rotateOneAudit(usageKey, faKey, forcedAuditor, isCross, rotationDay, specialDueForThisAudit)
+        writeRotationIndex(u, (idx + 1) % wps.size())
 
         if (specialDueForThisAudit) {
             commitSpecialDue(u, faKey, specialDueForThisAudit, rotationDay)

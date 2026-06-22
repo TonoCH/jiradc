@@ -184,7 +184,18 @@ class AuditLevel5Handler extends AuditHandlerBase {
         }
 
         updateRotationData(JsonOutput.toJson(rotation))
-        updateDateOfNextRotation(CommonHelper.getNextDate(startDate, effectiveInterval()))
+
+        // Bug #2 guard: when target_start_date lands in the first half of a
+        // month, getNextDate("monthly-mid") returns the 15th of the SAME month,
+        // and the scheduler would create a second wave of audits in the same
+        // calendar month as the initial audits — violating "max 1 audit per
+        // PC / per auditor per month". Push to the 15th of the following month.
+        LocalDate nextRotation = CommonHelper.getNextDate(startDate, effectiveInterval())
+        if (nextRotation.year == startDate.year && nextRotation.monthValue == startDate.monthValue) {
+            nextRotation = nextRotation.plusMonths(1).withDayOfMonth(15)
+            logger.setInfoMessage("L5 init: nextRotation pushed to ${nextRotation} to avoid double-booking the initial month")
+        }
+        updateDateOfNextRotation(nextRotation)
         def apReload = new AuditPreparation(myBaseUtil.getIssueByKey(auditPreparationIssue.getIssue().getKey()))
         logger.setInfoMessage("AP ${apReload.getIssue().key} nextRotation advanced to ${apReload.getDate_of_next_rotation()}")
     }
