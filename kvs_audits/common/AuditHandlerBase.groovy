@@ -276,7 +276,10 @@ public class AuditHandlerBase {
                     commonHelper.updateTargetEndDate(result.issue, targetEndDate)
                 }
 
-                commonHelper.verifyAndUpdateIssueMetadata(result.issue, assigneeAuditorBase, auditPreparationIssue.getIssue())
+                //commonHelper.verifyAndUpdateIssueMetadata(result.issue, assigneeAuditorBase, auditPreparationIssue.getIssue())
+                // Bug #5 fix: must use `assigneeForThisAudit (which for L5 cycles across allAuditors via initialAuditorIndex), not assigneeAuditorBase
+                commonHelper.verifyAndUpdateIssueMetadata(result.issue, assigneeForThisAudit, auditPreparationIssue.getIssue())
+
 
                 //send mail if level 3
                 if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_3 && targetEndDate) {
