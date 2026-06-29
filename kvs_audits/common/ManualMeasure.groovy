@@ -212,24 +212,35 @@ class ManualMeasure {
     private void applyManualAuditTexts(Issue createdAudit, Issue mmIssue, Map ctx) {
         MutableIssue mutable = issueManager.getIssueObject(createdAudit.id)
 
-        String issueDescription = """
-        ${mmIssue.description ?: ""}
-        PC= ${ctx.pcKey ?: "-"}
-        ${ctx.secondaryLabel}= ${ctx.secondaryValue ?: "-"}
-        Usage= ${ctx.usage ?: "-"}
-        Audit Level= ${ctx.auditLevel ?: "-"}
-        """.stripIndent().trim()
+        boolean isLevel5 = (ctx.auditLevel == CustomFieldsConstants.AUDIT_LEVEL_5)
 
-                mutable.setDescription(issueDescription)
+        // Plain Description: L5 leaves out FA / secondary line entirely (consistent with scheduled L5 audits).
+        List<String> descLines = []
+        if (mmIssue.description) descLines << (mmIssue.description as String)
+        descLines << "PC= ${ctx.pcKey ?: "-"}"
+        if (!isLevel5) descLines << "${ctx.secondaryLabel}= ${ctx.secondaryValue ?: "-"}"
+        descLines << "Usage= ${ctx.usage ?: "-"}"
+        descLines << "Audit Level= ${ctx.auditLevel ?: "-"}"
+        String issueDescription = descLines.join("\n").trim()
 
-                def auditDescriptionCf = CustomFieldsConstants.getCustomFieldByName("Audit Description")
-                if (auditDescriptionCf) {
-                    String auditDescriptionText = """
-        {*}PC={*}${ctx.pcKey ?: "-"}
-        {*}${ctx.secondaryLabel}={*}${ctx.secondaryValue ?: "-"}
-        {*}WPC={*}-
-        {*}Audit Level={*}${ctx.auditLevel ?: "-"}
-        """.stripIndent().trim()
+        mutable.setDescription(issueDescription)
+
+        def auditDescriptionCf = CustomFieldsConstants.getCustomFieldByName("Audit Description")
+        if (auditDescriptionCf) {
+            List<String> auditLines = []
+            auditLines << "{*}PC={*}${ctx.pcKey ?: "-"}"
+            if (isLevel5) {
+                // L5: FA key stays empty; KVS PC Sub-Area is exposed as a separate Sub-Area line.
+                auditLines << "{*}FA={*}"
+                auditLines << "{*}WPC={*}-"
+                auditLines << "{*}Audit Level={*}${ctx.auditLevel ?: "-"}"
+                auditLines << (ctx.secondaryValue ? "{*}Sub-Area={*} ${ctx.secondaryValue}" : "{*}Sub-Area={*}")
+            } else {
+                auditLines << "{*}${ctx.secondaryLabel}={*}${ctx.secondaryValue ?: "-"}"
+                auditLines << "{*}WPC={*}-"
+                auditLines << "{*}Audit Level={*}${ctx.auditLevel ?: "-"}"
+            }
+            String auditDescriptionText = auditLines.join("\n").trim()
 
             mutable.setCustomFieldValue(auditDescriptionCf, auditDescriptionText)
         }

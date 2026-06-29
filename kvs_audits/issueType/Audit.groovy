@@ -1,6 +1,5 @@
 package kvs_audits.issueType
 
-import com.atlassian.jira.issue.MutableIssue
 import com.atlassian.jira.issue.customfields.option.Option
 import kvs_audits.common.CustomFieldsConstants;
 import com.atlassian.jira.issue.Issue;
@@ -153,6 +152,11 @@ public class Audit extends BaseIssue{
         if(getAuditLevel().equals(CustomFieldsConstants.AUDIT_LEVEL_3)){
             payload = "{*}PC={*}${pcKey} ${pcName}\n{*}FA={*}${faKey} ${faName}\n{*}Audit Level={*}${getAuditLevel()}"
         }
+        if(getAuditLevel().equals(CustomFieldsConstants.AUDIT_LEVEL_5)){
+            // L5: leave FA key empty; expose KVS PC Sub-Area read from the Functional Area issue instead.
+            payload = "{*}PC={*}${pcKey} ${pcName}\n{*}FA={*}\n{*}WPC={*}${wpcStr}\n{*}Audit Level={*}${getAuditLevel()}"
+            payload += get_A_B_SubAreaString(fa)
+        }
 
         if (AUDIT_DESCRIPTION_FIELD == null)
             throw new IllegalStateException("Custom field AUDIT_DESCRIPTION_FIELD not initialised.")
@@ -169,7 +173,7 @@ public class Audit extends BaseIssue{
         logger.setInfoMessage("Audit description updated on ${issue.key} -> ${payload}")
     }
 
-    private String get_A_B_SubAreaString(MutableIssue faIssue){
+    private String get_A_B_SubAreaString(Issue faIssue){
         def subAreaLetter = faIssue ? customFieldUtil.getFieldValue_SingleSelect(
                 myBaseUtil.getCustomFieldValue(faIssue, BaseIssue.KVS_PC_SUB_AREA_FIELD_NAME)
         ) : null
@@ -229,13 +233,17 @@ public class Audit extends BaseIssue{
     void setInfoDescriptionAndSummary(String pcKey, String faKey, String usageKey, String auditLevel) {
         if (issue == null) throw new NullPointerException("setInfoDescriptionAndSummary on null Audit.")
 
+        boolean isLevel5 = (auditLevel == CustomFieldsConstants.AUDIT_LEVEL_5)
+
+        // L5: do not put FA into the Description (key is left out entirely).
+        List<String> lines = []
+        lines << "{*}PC={*} ${pcKey ?: "-"}"
+        if (!isLevel5) lines << "{*}FA={*} ${faKey ?: "-"}"
+        lines << "{*}Usage={*} ${usageKey ?: "-"}"
+        lines << "{*}Audit Level={*} ${auditLevel ?: "-"}"
+
         String currentDesc = issue.getDescription() ?: ""
-        String desc = currentDesc + """
-            {*}PC={*} ${pcKey ?: "-"}
-            {*}FA={*} ${faKey ?: "-"}
-            {*}Usage={*} ${usageKey ?: "-"}
-            {*}Audit Level={*} ${auditLevel ?: "-"}
-            """.stripIndent()
+        String desc = currentDesc + "\n" + lines.join("\n") + "\n"
 
         // subArea letter A/B
         def m = usageKey ? (usageKey =~ /_(A|B)_Level_[45]$/) : null
