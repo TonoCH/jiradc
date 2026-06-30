@@ -197,17 +197,28 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
 
         // Advance global pointers AFTER picks succeed/fail (we always move forward to avoid infinite loop)
         int picks = pickedUsages.size()
+        int ringSize = usagePcMap.size()
+
+        // PC rotation fix: advance the cursor PAST every slot consumed this tick.
+        // `attempts` = usage slots scanned to collect `picks` distinct PCs (it
+        // includes duplicate-PC slots that were skipped, e.g. *_A / *_B usages
+        // sharing one Profit Center). Advancing by `attempts` makes consecutive
+        // months use NON-OVERLAPPING windows, so every PC is visited before any
+        // repeats. The old code advanced by a fixed 1, overlapping windows by
+        // picks-1 and re-auditing the middle PCs every month while starving the
+        // PCs further down the ring (they were never reached).
+        int newTurnIdx = (picks > 0) ? (turnIdx + attempts) % ringSize : turnIdx
+
+        // Auditor round-robin: one audit per auditor per tick.
         int newGIdx = (gIdx + picks) % auditorCount
 
-        // Bug #1 fix: advancing usageTurnIndex by `attempts` wraps to 0 whenever
-        // picks divides |PCs|, freezing the auditor→PC mapping across months
-        // (e.g. 4 auditors × 4 PCs, or 4 auditors × 2 PCs). To guarantee every
-        // auditor eventually visits every PC, shift the PC ring by 1 each time
-        // the auditor round-robin completes a full cycle (gIdx wraps to 0).
-        // This produces a Latin-square traversal regardless of A/P ratio.
-        int newTurnIdx = turnIdx
-        if (picks > 0 && newGIdx == 0) {
-            newTurnIdx = (turnIdx + 1) % usagePcMap.size()
+        // Resonance break: when `picks` is an exact multiple of the auditor count
+        // (the square-ratio case, e.g. 4 auditors × 4 PCs) the auditor index does
+        // not advance and the same auditor→PC mapping would repeat every cycle.
+        // Nudge the auditor base by 1 so over time every auditor visits every PC
+        // (Latin-square traversal) — independent of the PC coverage above.
+        if (picks > 0 && newGIdx == gIdx) {
+            newGIdx = (gIdx + 1) % auditorCount
         }
 
         data.usageTurnIndex = newTurnIdx

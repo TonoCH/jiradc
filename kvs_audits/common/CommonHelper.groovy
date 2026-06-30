@@ -9,8 +9,11 @@ import kvs_audits.issueType.Question
 import utils.CustomFieldUtil
 import utils.MyBaseUtil
 import java.sql.Timestamp
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters
 import com.atlassian.jira.issue.fields.CustomField
 import com.atlassian.jira.issue.Issue
 import com.atlassian.jira.component.ComponentAccessor;
@@ -201,6 +204,27 @@ class CommonHelper {
                 // default weekly
                 return ourDate.plusDays(7)
         }
+    }
+
+    /**
+     * Snaps an arbitrary date to the nearest Monday.
+     *
+     * L5 audits are anchored on the 15th of each month for SCHEDULING, but the
+     * audit's Target start must fall on a Monday (mid-month). The 15th is rarely
+     * a Monday, so we move to whichever Monday is closer in days; on a tie-free
+     * 7-day week the nearer side is unambiguous (Mon–Thu → back, Fri–Sun → forward).
+     *
+     * @param date any date (typically the 15th rotation anchor)
+     * @return the closest Monday (same date if already Monday)
+     */
+    public static LocalDate snapToNearestMonday(LocalDate date) {
+        if (date == null) return null
+        if (date.dayOfWeek == DayOfWeek.MONDAY) return date
+        LocalDate prevMonday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        LocalDate nextMonday = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY))
+        long toPrev = ChronoUnit.DAYS.between(prevMonday, date)
+        long toNext = ChronoUnit.DAYS.between(date, nextMonday)
+        return (toPrev <= toNext) ? prevMonday : nextMonday
     }
 
     public void updateTargetEndDate(Issue issue, LocalDate targetEndDate) {

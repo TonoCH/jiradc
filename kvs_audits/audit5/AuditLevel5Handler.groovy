@@ -217,7 +217,11 @@ class AuditLevel5Handler extends AuditHandlerBase {
 
         def dateFormat = applicationProperties.getString(APKeys.JIRA_DATE_PICKER_JAVA_FORMAT) // napr. "dd.MM.yyyy"
         def fmt = DateTimeFormatter.ofPattern(dateFormat)
-        def rotationDayString = rotationDay.format(fmt)
+        // L5 audits must START on a Monday (mid-month). The 15th rotation anchor is
+        // rarely a Monday, so snap Target start/end (and the ICS invite) to the
+        // nearest Monday. The 15th stays the scheduling anchor (Date Of Next Rotation).
+        LocalDate targetStartDay = CommonHelper.snapToNearestMonday(rotationDay)
+        def rotationDayString = targetStartDay.format(fmt)
 
         if (!nextAuditor) {
             //nextAuditor = reporterName
@@ -252,13 +256,13 @@ class AuditLevel5Handler extends AuditHandlerBase {
         audit.commitIssueUpdate(EventDispatchOption.DO_NOT_DISPATCH)
 
         if (auditPreparationIssue.getDate_target_start()) {
-            commonHelper.updateTargetEndDate(result.issue, rotationDay.plusDays(CustomFieldsConstants.NUM_OF_DAYS_FOR_TARGET_END))
+            commonHelper.updateTargetEndDate(result.issue, targetStartDay.plusDays(CustomFieldsConstants.NUM_OF_DAYS_FOR_TARGET_END))
         }
 
         commonHelper.verifyAndUpdateIssueMetadata(result.issue, nextAuditor, auditPreparationIssue.getIssue())
 
         new AuditMailer().sendAuditInviteAsICS(result.issue, nextAuditor,
-                rotationDay);//.plusDays(CustomFieldsConstants.NUM_OF_DAYS_FOR_TARGET_END))
+                targetStartDay);//.plusDays(CustomFieldsConstants.NUM_OF_DAYS_FOR_TARGET_END))
 
         boolean skip = isCrossAudit;
         /*if (isCrossAudit) {
