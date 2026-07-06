@@ -9,7 +9,7 @@ package listeners.global_area.projectInformation
 import com.atlassian.jira.event.issue.IssueEvent
 
 def issueEvent = event as IssueEvent
-def handler = new ProjectInformationHandler2()
+def handler = new ProjectInformationHandler()
 
 if (!handler.isProjectInformationChanged(issueEvent)) {
     return

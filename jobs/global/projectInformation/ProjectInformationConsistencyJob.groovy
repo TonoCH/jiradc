@@ -33,7 +33,7 @@ import com.atlassian.jira.project.Project
 import com.atlassian.jira.security.PermissionManager
 import com.atlassian.jira.user.ApplicationUser
 import com.atlassian.jira.user.util.UserManager
-import listeners.global_area.projectInformation.ProjectInformationHandler2
+import listeners.global_area.projectInformation.ProjectInformationHandler
 import org.apache.log4j.Logger
 import utils.mail_notifiers.Mailer
 
@@ -48,7 +48,7 @@ class ProjectInformationConsistencyJob {
 
     private final UserManager userManager = ComponentAccessor.userManager
     private final PermissionManager permissionManager = ComponentAccessor.permissionManager
-    private final ProjectInformationHandler2 handler = new ProjectInformationHandler2()
+    private final ProjectInformationHandler handler = new ProjectInformationHandler()
     private final CustomFieldManager cfManager = ComponentAccessor.customFieldManager
 
     // ----- run statistics -----
@@ -70,10 +70,10 @@ class ProjectInformationConsistencyJob {
     void run() {
         resetState()
 
-        ApplicationUser writeUser = userManager.getUserByName(ProjectInformationHandler2.JIRA_BOT)
+        ApplicationUser writeUser = userManager.getUserByName(ProjectInformationHandler.JIRA_BOT)
 
         if (!writeUser) {
-            log.error("Project Information consistency job: service user '${ProjectInformationHandler2.JIRA_BOT}' not found. Aborting.")
+            log.error("Project Information consistency job: service user '${ProjectInformationHandler.JIRA_BOT}' not found. Aborting.")
             return
         }
 
@@ -85,7 +85,7 @@ class ProjectInformationConsistencyJob {
 
             List<Issue> initiatives = handler.findIssuesAsUserPaged(
                     writeUser,
-                    "issuetype = \"${ProjectInformationHandler2.ISSUE_TYPE_INITIATIVE}\""
+                    "issuetype = \"${ProjectInformationHandler.ISSUE_TYPE_INITIATIVE}\""
             )
 
             initiatives.each { Issue initiative ->
@@ -131,24 +131,24 @@ class ProjectInformationConsistencyJob {
     private void validateConfiguration() {
         List<String> missing = []
 
-        if (!cfManager.getCustomFieldObject(ProjectInformationHandler2.CF_PROJECT_INFORMATION_ID)) {
-            missing.add("CF_PROJECT_INFORMATION_ID=${ProjectInformationHandler2.CF_PROJECT_INFORMATION_ID}")
+        if (!cfManager.getCustomFieldObject(ProjectInformationHandler.CF_PROJECT_INFORMATION_ID)) {
+            missing.add("CF_PROJECT_INFORMATION_ID=${ProjectInformationHandler.CF_PROJECT_INFORMATION_ID}")
         }
 
-        if (!cfManager.getCustomFieldObject(ProjectInformationHandler2.CF_PROJECT_INFORMATION_TEXT_ID)) {
-            missing.add("CF_PROJECT_INFORMATION_TEXT_ID=${ProjectInformationHandler2.CF_PROJECT_INFORMATION_TEXT_ID}")
+        if (!cfManager.getCustomFieldObject(ProjectInformationHandler.CF_PROJECT_INFORMATION_TEXT_ID)) {
+            missing.add("CF_PROJECT_INFORMATION_TEXT_ID=${ProjectInformationHandler.CF_PROJECT_INFORMATION_TEXT_ID}")
         }
 
-        if (!cfManager.getCustomFieldObject(ProjectInformationHandler2.CF_PROJECT_INFORMATION_FLAG_ID)) {
-            missing.add("CF_PROJECT_INFORMATION_FLAG_ID=${ProjectInformationHandler2.CF_PROJECT_INFORMATION_FLAG_ID}")
+        if (!cfManager.getCustomFieldObject(ProjectInformationHandler.CF_PROJECT_INFORMATION_FLAG_ID)) {
+            missing.add("CF_PROJECT_INFORMATION_FLAG_ID=${ProjectInformationHandler.CF_PROJECT_INFORMATION_FLAG_ID}")
         }
 
-        if (!cfManager.getCustomFieldObject(ProjectInformationHandler2.CF_PARENT_LINK)) {
-            missing.add("CF_PARENT_LINK=${ProjectInformationHandler2.CF_PARENT_LINK}")
+        if (!cfManager.getCustomFieldObject(ProjectInformationHandler.CF_PARENT_LINK)) {
+            missing.add("CF_PARENT_LINK=${ProjectInformationHandler.CF_PARENT_LINK}")
         }
 
-        if (!ProjectInformationHandler2.CF_EPIC_LINK || !cfManager.getCustomFieldObject(ProjectInformationHandler2.CF_EPIC_LINK)) {
-            missing.add("CF_EPIC_LINK=${ProjectInformationHandler2.CF_EPIC_LINK}")
+        if (!ProjectInformationHandler.CF_EPIC_LINK || !cfManager.getCustomFieldObject(ProjectInformationHandler.CF_EPIC_LINK)) {
+            missing.add("CF_EPIC_LINK=${ProjectInformationHandler.CF_EPIC_LINK}")
         }
 
         if (!missing.isEmpty()) {
@@ -167,7 +167,7 @@ class ProjectInformationConsistencyJob {
         List<Project> projects = ComponentAccessor.projectManager.projectObjects
 
         projects.each { Project project ->
-            if (ProjectInformationHandler2.EXCLUDED_PROJECT_KEYS.contains(project.key)) {
+            if (ProjectInformationHandler.EXCLUDED_PROJECT_KEYS.contains(project.key)) {
                 return
             }
 
@@ -224,19 +224,19 @@ class ProjectInformationConsistencyJob {
         } else if (isEffectiveOverrideRoot(flag, currentPi, inheritedValue, inheritedFromOverride)) {
             branch = "OVERRIDE_ROOT"
             expectedPi = currentPi
-            expectedFlag = ProjectInformationHandler2.FLAG_OVERRIDE_ROOT
+            expectedFlag = ProjectInformationHandler.FLAG_OVERRIDE_ROOT
             childValue = currentPi
             childInheritedFromOverride = true
         } else if (inheritedFromOverride) {
             branch = "INHERITED_FROM_OVERRIDE"
             expectedPi = inheritedValue
-            expectedFlag = ProjectInformationHandler2.FLAG_INHERITED_FROM_OVERRIDE
+            expectedFlag = ProjectInformationHandler.FLAG_INHERITED_FROM_OVERRIDE
             childValue = inheritedValue
             childInheritedFromOverride = true
         } else {
             branch = "INHERITED_FROM_INITIATIVE"
             expectedPi = inheritedValue
-            expectedFlag = ProjectInformationHandler2.FLAG_INHERITED_FROM_INITIATIVE
+            expectedFlag = ProjectInformationHandler.FLAG_INHERITED_FROM_INITIATIVE
             childValue = inheritedValue
             childInheritedFromOverride = false
         }
@@ -285,7 +285,7 @@ class ProjectInformationConsistencyJob {
             String inheritedValue,
             boolean inheritedFromOverride
     ) {
-        if (flag == null || flag != ProjectInformationHandler2.FLAG_OVERRIDE_ROOT_INT) {
+        if (flag == null || flag != ProjectInformationHandler.FLAG_OVERRIDE_ROOT_INT) {
             return false
         }
 
@@ -404,7 +404,7 @@ class ProjectInformationConsistencyJob {
 
         String permissionSection = projectsWithoutBrowse.isEmpty() ?
                 "Browse permission     : OK for all scanned projects" :
-                "Browse permission     : MISSING for '${ProjectInformationHandler2.JIRA_BOT}' on ${projectsWithoutBrowse.size()} project(s):\n" +
+                "Browse permission     : MISSING for '${ProjectInformationHandler.JIRA_BOT}' on ${projectsWithoutBrowse.size()} project(s):\n" +
                         "                        ${projectsWithoutBrowse.join(", ")}\n" +
                         "                        Issues in these projects are NOT validated/propagated - grant Browse to the service account."
 
@@ -417,7 +417,7 @@ class ProjectInformationConsistencyJob {
         Repaired              : ${repaired}
         Anomalies             : ${anomalies}
         Failed / errors       : ${errors}
-        Excluded projects     : ${ProjectInformationHandler2.EXCLUDED_PROJECT_KEYS.isEmpty() ? "none" : ProjectInformationHandler2.EXCLUDED_PROJECT_KEYS.join(", ")}
+        Excluded projects     : ${ProjectInformationHandler.EXCLUDED_PROJECT_KEYS.isEmpty() ? "none" : ProjectInformationHandler.EXCLUDED_PROJECT_KEYS.join(", ")}
         ${permissionSection}
         
         ${csvRows.isEmpty() ? "No inconsistencies found - hierarchy is fully consistent." : "See attached CSV for the full list of affected issues. Rows with Result = REPAIR_FAILED / EXCEPTION / ANOMALY_EMPTY_VALUE could NOT be written - check the Detail column for the reason (often missing Browse/Edit permission for the service account on the affected project)."}

@@ -22,7 +22,7 @@ import com.atlassian.jira.web.bean.PagerFilter
 import org.apache.log4j.Logger
 import utils.mail_notifiers.Mailer
 
-class ProjectInformationHandler2 {
+class ProjectInformationHandler {
 
     static final Long CF_PROJECT_INFORMATION_ID      = 18600L //Select List (multiple choices)
     static final Long CF_PROJECT_INFORMATION_TEXT_ID = 18700L //ext mirror

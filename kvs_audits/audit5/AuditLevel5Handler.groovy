@@ -31,99 +31,70 @@ class AuditLevel5Handler extends AuditHandlerBase {
 
     public void createAudit(List<String> questionUsages) {
 
-        List<String> seed = (questionUsages ?: []).findAll { it?.trim() }
 
-        if (seed.isEmpty()) {
-            Issue profitCenter = customFieldUtil.getCustomFieldValueFromIssuePicker(auditPreparationIssue.getIssue(), AuditPreparation.PROFIT_CENTER_FIELD_NAME) as Issue
+        List<String> selectedUsages = (questionUsages ?: [])
+                .findAll { it?.trim() }
+                .collect { it.trim() }
+                .unique()
 
-            if (!profitCenter) {
-                logger.setErrorMessage("L5 createAudit: Profit Center not found on Audit Preparation ${auditPreparationIssue.getIssue().key}")
-                return
-            }
+        List<String> invalidUsages = selectedUsages.findAll { !isCorrectAuditLevel(it) }
 
-            String pcCode = (myBaseUtil.getCustomFieldValue(profitCenter, CustomFieldsConstants.PROFIT_CENTER_KEY) ?: "") as String
-            logger.setInfoMessage("L5 createAudit: resolved PC key $pcCode")
-
-
-            List<String> allLeveL5Usages = commonHelper.getQuestionUsageValuesForLevel(CustomFieldsConstants.AUDIT_LEVEL_5) ?: []
-            logger.setWarnMessage("allLeveL5Usages " + allLeveL5Usages)
-
-            List<String> candidates = allLeveL5Usages.findAll { u -> u && u.split('_')[0] == pcCode }
-
-            List<String> derived = []
-            candidates.each { u ->
-                String[] parts = u.split('_')
-                //boolean hasAB = (parts.size() > 2)
-                //boolean hasAB = (u ==~ /.+_(A|B)_Level_5$/)
-                boolean hasAB = parseSubAreaLetterOrNull(u) != null
-
-
-                if (hasAB) {
-                    derived << u
-                } else {
-                    List<String> aKeys = jqlSearcher.getFunctionalAreasKeys(profitCenter, "A") ?: []
-                    List<String> bKeys = jqlSearcher.getFunctionalAreasKeys(profitCenter, "B") ?: []
-                    boolean onlyA = aKeys && !bKeys
-                    boolean onlyB = bKeys && !aKeys
-
-                    if (onlyA) {
-                        derived << "${pcCode}_A_Level_5"
-                        logger.setInfoMessage("L5 createAudit: '${u}' -> 'A' -> ${derived[-1]}")
-                    } else if (onlyB) {
-                        derived << "${pcCode}_B_Level_5"
-                        logger.setInfoMessage("L5 createAudit: '${u}' -> 'B' -> ${derived[-1]}")
-                    } else {
-                        logger.setWarnMessage("L5 createAudit: PC '${pcCode}' has A and B; usage withou A/B ('${u}') skip it.")
-                    }
-                }
-            }
-
-            logger.setWarnMessage("derived " + derived)
-
-            if (!derived) {
-                logger.setWarnMessage("L5 createAudit: No Question Usage values found for Profit Center ${profitCenter.key} at Level 5.")
-                return
-            }
-
-            questionUsages = derived.unique()
-            logger.setInfoMessage("L5 createAudit: Derived usages for ${profitCenter.key}: ${questionUsages}")
+        if (invalidUsages) {
+            logger.setWarnMessage("L5 createAudit: Ignoring non-Level-5 Question Usages selected on AP ${auditPreparationIssue.getIssue().key}: ${invalidUsages}")
         }
+
+        questionUsages = selectedUsages.findAll { isCorrectAuditLevel(it) }
+
+
+        if (!questionUsages) {
+            logger.setErrorMessage(
+                    "L5 createAudit: No Question Usages selected on Audit Preparation ${auditPreparationIssue.getIssue().key}. " +
+                            "Level 5 strict mode requires explicit Question Usages."
+            )
+            return
+        }
+
+        logger.setInfoMessage("L5 createAudit: Using only AP-selected Question Usages: ${questionUsages}")
 
         // STRICT MODE: max 1 audit per Profit Center per month
         List<String> auditors = auditPreparationIssue.getAuditors() ?: []
         int auditorCount = auditors ? auditors.size() : 1
 
-        // build ordered list where first occurrences are unique PCs
-        List<Map> usageWithPc = (questionUsages ?: []).collect { u ->
+        List<Map> usageWithPc = questionUsages.collect { u ->
             Issue pc = jqlSearcher.getPCFromQuestionUsage(u, currentAuditLevel)
             [usage: u, pcKey: pc?.key]
         }.findAll { it.pcKey }
 
-        // preserve order of first unique pc usages
         Set<String> seenPc = [] as Set
         List<String> uniquePcUsagesInOrder = []
+
         usageWithPc.each { row ->
-            if (seenPc.add(row.pcKey)) uniquePcUsagesInOrder << row.usage
+            if (seenPc.add(row.pcKey)) {
+                uniquePcUsagesInOrder << row.usage
+            }
         }
 
         int uniquePcCount = uniquePcUsagesInOrder.size()
+
         if (uniquePcCount == 0) {
-            logger.setWarnMessage("L5 strict createAudit: no usable Profit Centers resolved from Question Usages: ${questionUsages}")
+            logger.setWarnMessage(
+                    "L5 strict createAudit: no usable Profit Centers resolved from Question Usages: ${questionUsages}"
+            )
             return
         }
 
         int maxInitialAudits = Math.min(auditorCount, uniquePcCount)
 
         if (auditorCount > uniquePcCount) {
-            logger.setWarnMessage("L5 strict createAudit: auditors=${auditorCount} but uniqueProfitCenters=${uniquePcCount}. " +
-                    "STRICT mode => only ${maxInitialAudits} initial audits will be created; remaining auditors will not get an audit this month.")
+            logger.setWarnMessage(
+                    "L5 strict createAudit: auditors=${auditorCount} but uniqueProfitCenters=${uniquePcCount}. " +
+                            "Only ${maxInitialAudits} initial audits will be created."
+            )
         }
 
-        // ensure first maxInitialAudits usages are unique-PC, rest stays for rotation pool
-        List<String> rest = (questionUsages - uniquePcUsagesInOrder)
+        List<String> rest = questionUsages - uniquePcUsagesInOrder
         List<String> orderedUsages = uniquePcUsagesInOrder + rest
 
-        // FIX: snapshot for initializeRotationData
         this.orderedUsagesForInit = orderedUsages
         this.maxInitialAuditsForInit = maxInitialAudits
 
