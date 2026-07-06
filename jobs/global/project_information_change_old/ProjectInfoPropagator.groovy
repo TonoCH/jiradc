@@ -1,4 +1,4 @@
-package jobs.global.project_information_change
+package jobs.global.project_information_change_old
 
 import com.atlassian.jira.component.ComponentAccessor
 import com.atlassian.jira.event.type.EventDispatchOption

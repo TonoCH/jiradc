@@ -539,16 +539,28 @@ public class AuditHandlerBase {
             }
         }
 
-        // Canonical names (fas / currentFaIndex) apply uniformly to L3/L4/L5.
-        // See RotationDataKeys.
-        return [
-                usageKey             : questionUsageValue,
-                fas                  : workplacesKeys as List,
-                currentFaIndex       : 1,
-                auditors             : auditors,
-                currentAuditorIndex  : 1,
-                specialQuestions     : transformedSpecialQuestions
-        ]
+        if(currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_2){
+            return [
+                    usageKey             : questionUsageValue,
+                    workplaces           : workplacesKeys as List,
+                    currentWorkplaceIndex : 1,
+                    auditors             : auditors,
+                    currentAuditorIndex  : 1,
+                    specialQuestions     : transformedSpecialQuestions
+            ]
+        }
+        else {
+            // Canonical names (fas / currentFaIndex) apply uniformly to L3/L4/L5.
+            // See RotationDataKeys.
+            return [
+                    usageKey           : questionUsageValue,
+                    fas                : workplacesKeys as List,
+                    currentFaIndex     : 1,
+                    auditors           : auditors,
+                    currentAuditorIndex: 1,
+                    specialQuestions   : transformedSpecialQuestions
+            ]
+        }
     }
 
     protected String parseSubAreaLetterOrNull(String usageKey) {

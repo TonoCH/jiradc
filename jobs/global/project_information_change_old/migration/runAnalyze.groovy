@@ -1,4 +1,4 @@
-package jobs.global.project_information_change.migration
+package jobs.global.project_information_change_old.migration
 
 /**
  * Run from ScriptRunner Console.
