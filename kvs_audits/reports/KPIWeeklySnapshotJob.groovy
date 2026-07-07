@@ -57,27 +57,27 @@ class KPIWeeklySnapshotJob {
                     questionsJql: """${KVS_OVERALL_QUESTIONS}""",
                     measuresJql : """project = "${CustomFieldsConstants.PROJECT_KVS_AUDIT}" AND issuetype = "${CustomFieldsConstants.MEASURE}" AND issueFunction in linkedIssuesOf('${KVS_OVERALL_QUESTIONS}', 'relates to')"""
             ],
-            "${PCKEY2}": [
+            (PCKEY2)   : [
                     pcKey       : PCKEY2,
                     questionsJql: """$KVS_PC2_QUESTIONS """,
                     measuresJql : """project = "${CustomFieldsConstants.PROJECT_KVS_AUDIT}" AND issuetype = "${CustomFieldsConstants.MEASURE}" AND issueFunction in linkedIssuesOf('$KVS_PC2_QUESTIONS', 'relates to')"""
             ],
-            "${PCKEY3}": [
+            (PCKEY3)   : [
                     pcKey       : PCKEY3,
                     questionsJql: """$KVS_PC3_QUESTIONS """,
                     measuresJql : """project = "${CustomFieldsConstants.PROJECT_KVS_AUDIT}" AND issuetype = "${CustomFieldsConstants.MEASURE}" AND issueFunction in linkedIssuesOf('$KVS_PC3_QUESTIONS', 'relates to')"""
             ],
-            "${PCKEY4}": [
+            (PCKEY4)   : [
                     pcKey       : PCKEY4,
                     questionsJql: """$KVS_PC4_QUESTIONS """,
                     measuresJql : """project = "${CustomFieldsConstants.PROJECT_KVS_AUDIT}" AND issuetype = "${CustomFieldsConstants.MEASURE}" AND issueFunction in linkedIssuesOf('$KVS_PC4_QUESTIONS', 'relates to')"""
             ],
-            "${PCKEY6}": [
+            (PCKEY6)   : [
                     pcKey       : PCKEY6,
                     questionsJql: """$KVS_PC6_QUESTIONS """,
                     measuresJql : """project = "${CustomFieldsConstants.PROJECT_KVS_AUDIT}" AND issuetype = "${CustomFieldsConstants.MEASURE}" AND issueFunction in linkedIssuesOf('$KVS_PC6_QUESTIONS', 'relates to')"""
             ],
-            "${PCKEY9}": [
+            (PCKEY9)   : [
                     pcKey       : PCKEY9,
                     questionsJql: """$KVS_PC9_QUESTIONS """,
                     measuresJql : """project = "${CustomFieldsConstants.PROJECT_KVS_AUDIT}" AND issuetype = "${CustomFieldsConstants.MEASURE}" AND issueFunction in linkedIssuesOf('$KVS_PC9_QUESTIONS', 'relates to')"""

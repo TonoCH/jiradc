@@ -43,7 +43,8 @@ class AuditLevel5Handler extends AuditHandlerBase {
             logger.setWarnMessage("L5 createAudit: Ignoring non-Level-5 Question Usages selected on AP ${auditPreparationIssue.getIssue().key}: ${invalidUsages}")
         }
 
-        questionUsages = selectedUsages.findAll { isCorrectAuditLevel(it) }
+        // Sorted so a split PC's "A" usage is always first, matching the scheduler's ordering.
+        questionUsages = selectedUsages.findAll { isCorrectAuditLevel(it) }.sort()
 
 
         if (!questionUsages) {
@@ -56,9 +57,17 @@ class AuditLevel5Handler extends AuditHandlerBase {
 
         logger.setInfoMessage("L5 createAudit: Using only AP-selected Question Usages: ${questionUsages}")
 
-        // STRICT MODE: max 1 audit per Profit Center per month
         List<String> auditors = auditPreparationIssue.getAuditors() ?: []
-        int auditorCount = auditors ? auditors.size() : 1
+        if (!auditors) {
+            logger.setErrorMessage(
+                    "L5 createAudit: No auditors selected on Audit Preparation ${auditPreparationIssue.getIssue().key}. " +
+                            "Level 5 requires at least one auditor."
+            )
+            return
+        }
+
+        // STRICT MODE: max 1 audit per Profit Center per month
+        int auditorCount = auditors.size()
 
         List<Map> usageWithPc = questionUsages.collect { u ->
             Issue pc = jqlSearcher.getPCFromQuestionUsage(u, currentAuditLevel)
@@ -110,29 +119,42 @@ class AuditLevel5Handler extends AuditHandlerBase {
     protected void initializeRotationData(Map<String, Map<String, Object>> questions_usages, int initialTurnIndex = 0) {
 
         LocalDate startDate = Optional.ofNullable(auditPreparationIssue.getDate_target_start())
-                .map { ts ->
-                    ts instanceof Timestamp ? ts.toLocalDate() : ts.toLocalDate()
-                }
+                .map { ts -> ts instanceof Timestamp ? ts.toLocalDate() : ts }
                 .orElse(LocalDate.now())
 
-        // FIX: derive which usages actually received an initial audit
-        // (first maxInitialAudits items in orderedUsages — see L5 STRICT mode).
-        Set<String> usagesWithInitial = (orderedUsagesForInit
-                ? orderedUsagesForInit.take(Math.max(0, maxInitialAuditsForInit))
-                : []) as Set
+        // Usages that already got an initial audit (first maxInitialAudits of orderedUsages).
+        List<String> usagesWithInitialOrdered = orderedUsagesForInit
+                ? orderedUsagesForInit.take(Math.max(0, maxInitialAuditsForInit)) as List<String>
+                : []
+        Set<String> usagesWithInitial = usagesWithInitialOrdered as Set
 
-        // FIX: globalAuditorIndex must start past the auditors already used by initial audits,
-        // so the first rotation tick picks the NEXT auditor instead of repeating auditors[0].
         List<String> auditors = auditPreparationIssue.getAuditors() ?: []
         int auditorCount = auditors ? auditors.size() : 1
         int initialGlobalAuditorIndex = (auditorCount > 0)
                 ? (usagesWithInitial.size() % auditorCount)
                 : 0
 
+        // Seed pcUsageIndex: a PC whose first usage already got an initial audit
+        // must start pointing at the OTHER usage (e.g. "B" if "A" was just used).
+        Map<String, List<String>> pcGroups = [:]
+        questions_usages.keySet().each { String uk ->
+            Issue pc = jqlSearcher.getPCFromQuestionUsage(uk as String, currentAuditLevel)
+            if (pc) {
+                pcGroups.computeIfAbsent(pc.key) { [] as List<String> } << (uk as String)
+            }
+        }
+        Map<String, Integer> pcUsageIndex = [:]
+        pcGroups.each { pcKey, usagesForPc ->
+            usagesForPc.sort()
+            boolean hadInitial = usagesForPc.any { usagesWithInitial.contains(it) }
+            pcUsageIndex[pcKey] = (hadInitial && usagesForPc.size() > 0) ? (1 % usagesForPc.size()) : 0
+        }
+
         def rotation = [
                 questions_usages  : questions_usages,
                 usageTurnIndex    : initialTurnIndex,
-                globalAuditorIndex: initialGlobalAuditorIndex
+                globalAuditorIndex: initialGlobalAuditorIndex,
+                pcUsageIndex      : pcUsageIndex
         ]
 
         questions_usages.each { key, data ->
@@ -140,8 +162,7 @@ class AuditLevel5Handler extends AuditHandlerBase {
             List<String> wps = RotationDataKeys.readUnits(data)
             RotationDataKeys.writeUnits(data, wps)
 
-            // FIX: usage that got an initial audit already consumed fas[0],
-            //      so start its rotation cursor at 1; pool-only usages start at 0.
+            // Usage with an initial audit already consumed fas[0]; start its cursor at 1.
             boolean hadInitial = usagesWithInitial.contains(key as String)
             int wpSize = wps.size()
             RotationDataKeys.writeIndex(data, (hadInitial && wpSize > 0) ? (1 % wpSize) : 0)
@@ -149,9 +170,22 @@ class AuditLevel5Handler extends AuditHandlerBase {
             data.currentCrossAuditorIndex = 0
             data.rotationCount            = 0
             data.crossAuditHistory        = []
+            data.auditorHistory           = [:]
 
             logger.setInfoMessage(">> [INIT] ${key}: hadInitial=${hadInitial}, currentFaIndex=${data.currentFaIndex}, fas=${data.fas}")
             logger.setInfoMessage(">> [INIT] ${key}: globalAuditorIndex=${initialGlobalAuditorIndex}, auditors=${auditors}")
+        }
+
+        // Seed auditorHistory for initial-audit usages (auditor = auditors[k % auditorCount],
+        // matching AuditHandlerBase.executeCreateAudit's assignment for the same entries).
+        if (auditorCount > 0) {
+            usagesWithInitialOrdered.eachWithIndex { String uk, int k ->
+                def u = questions_usages[uk]
+                if (u != null) {
+                    String usedAuditor = auditors[k % auditorCount]
+                    u.auditorHistory = [(usedAuditor): 1]
+                }
+            }
         }
 
         updateRotationData(JsonOutput.toJson(rotation))
@@ -226,9 +260,8 @@ class AuditLevel5Handler extends AuditHandlerBase {
 
         audit.commitIssueUpdate(EventDispatchOption.DO_NOT_DISPATCH)
 
-        if (auditPreparationIssue.getDate_target_start()) {
-            commonHelper.updateTargetEndDate(result.issue, targetStartDay.plusDays(CustomFieldsConstants.NUM_OF_DAYS_FOR_TARGET_END))
-        }
+        // Target end = Target start + 4 days always applies; not gated on the AP's own Target start field.
+        commonHelper.updateTargetEndDate(result.issue, targetStartDay.plusDays(CustomFieldsConstants.NUM_OF_DAYS_FOR_TARGET_END))
 
         commonHelper.verifyAndUpdateIssueMetadata(result.issue, nextAuditor, auditPreparationIssue.getIssue())
 
