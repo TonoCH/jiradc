@@ -45,7 +45,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             intervalSource       : 'IGNORED — fixed interval enforced',
             fixedIntervalOverride: 'monthly-mid',
             auditorRotation      : 'Per-usage auditorHistory; each pick assigns the live auditor with the lowest count for that usage, excluding auditors already used this tick',
-            usageRotation        : 'usageTurnIndex rotates WHICH PCs are picked (unique-PC ring); pcUsageIndex[pcKey] rotates WHICH usage (A/B) represents a split PC',
+            usageRotation        : 'Coverage-first: PCs are ranked by the audit count of their least-audited usage (auditorHistory sum) so every usage is picked at least once before any usage repeats; usageTurnIndex is only a tie-break seed for equally-covered PCs. pcUsageIndex[pcKey] picks WHICH usage (A/B) of a split PC is used, preferring whichever half has fewer audits',
             auditsPerTick        : 'Up to N audits per month, N = min(numberOfAuditors, numberOfUniqueProfitCenters)',
             crossAudits          : 'Not supported (isCross hard-coded false)',
             onePcPerTick         : true,
@@ -169,12 +169,26 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         int gIdx = (data.globalAuditorIndex instanceof Number) ? ((Number) data.globalAuditorIndex).intValue() : 0
         Map<String, Object> pcUsageIndex = (data.pcUsageIndex ?: [:]) as Map<String, Object>
 
-        // PC ring has one entry per unique PC (no A/B duplicates to skip), so it
-        // always advances cleanly by exactly targetCount each tick.
-        List<String> pickedPcKeys = []
-        for (int i = 0; i < targetCount; i++) {
-            pickedPcKeys << uniquePcKeys[(turnIdx + i) % uniquePcCount]
+        // Coverage-first pick: when uniquePcCount isn't a multiple of targetCount,
+        // a plain modular ring (old behaviour) lets some PCs land 2x in a cycle
+        // while others land only 1x — and a split (A/B) PC whose "short straw"
+        // pick always lands on the already-audited half leaves its sibling usage
+        // unaudited indefinitely (e.g. PCLA_B never got picked). Sort PCs by the
+        // audit count of their LEAST-audited usage first, so no usage repeats
+        // while another usage still has zero audits. Ties keep ring order so
+        // fully-covered PCs still rotate fairly among themselves.
+        Map<String, Integer> pcMinAuditCount = [:]
+        uniquePcKeys.each { String pcKey ->
+            pcMinAuditCount[pcKey] = pcToUsages[pcKey].collect { auditCountFor(usages[it] as Map) }.min()
         }
+        Map<String, Integer> ringPos = [:]
+        uniquePcKeys.eachWithIndex { String pcKey, int i ->
+            ringPos[pcKey] = ((i - turnIdx) % uniquePcCount + uniquePcCount) % uniquePcCount
+        }
+        List<String> pickedPcKeys = (uniquePcKeys as List<String>).sort { a, b ->
+            int byCoverage = pcMinAuditCount[a] <=> pcMinAuditCount[b]
+            byCoverage != 0 ? byCoverage : ringPos[a] <=> ringPos[b]
+        }.take(targetCount)
 
         if (pickedPcKeys.isEmpty()) {
             logger.setWarnMessage("Nothing to rotate for ${prepIssue.key} on ${rotationDay}.")
@@ -194,9 +208,13 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         Set<String> usedThisMonth = [] as Set
         pickedPcKeys.each { String pcKey ->
             List<String> pcUsages = pcToUsages[pcKey]
-            int subCursor = (pcUsageIndex[pcKey] instanceof Number) ? ((Number) pcUsageIndex[pcKey]).intValue() : 0
-            subCursor = ((subCursor % pcUsages.size()) + pcUsages.size()) % pcUsages.size()
-            String usageKey = pcUsages[subCursor]
+            int storedCursor = (pcUsageIndex[pcKey] instanceof Number) ? ((Number) pcUsageIndex[pcKey]).intValue() : 0
+            // Pick the least-audited usage under this PC (not a blind modular
+            // cursor), so an A/B half with zero audits is always chosen ahead
+            // of its sibling repeating. Ties fall back to the stored cursor so
+            // fully-covered split PCs still alternate A/B predictably.
+            String usageKey = pickLeastAuditedUsage(pcUsages, usages, storedCursor)
+            int subCursor = pcUsages.indexOf(usageKey)
 
             def u = usages[usageKey]
             if (u == null) {
@@ -336,6 +354,38 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
     }
 
     // ---------- helpers ----------
+
+    /** Total audits ever created for a usage = sum of its per-auditor history counts. */
+    private int auditCountFor(Map u) {
+        Map history = (u?.auditorHistory ?: [:]) as Map
+        int total = 0
+        history.values().each { v -> total += (v instanceof Number) ? ((Number) v).intValue() : 0 }
+        return total
+    }
+
+    /**
+     * Picks the usage under a (possibly split A/B) PC with the fewest audits so
+     * far. Guarantees a never-audited half is chosen before its sibling repeats.
+     * Ties (equal audit counts) fall back to the stored rotation cursor so a
+     * fully-covered split PC still alternates A/B in a stable order.
+     */
+    private String pickLeastAuditedUsage(List<String> pcUsages, Map usages, int storedCursor) {
+        int size = pcUsages.size()
+        if (size <= 1) return pcUsages[0]
+        int fallbackCursor = ((storedCursor % size) + size) % size
+        // Fixed original-index map so tie-break positions stay stable while sorting a copy.
+        Map<String, Integer> originalIndex = [:]
+        pcUsages.eachWithIndex { String uk, int i -> originalIndex[uk] = i }
+        List<String> copy = new ArrayList<String>(pcUsages)
+        return copy.sort { a, b ->
+            int countA = auditCountFor(usages[a] as Map)
+            int countB = auditCountFor(usages[b] as Map)
+            if (countA != countB) return countA <=> countB
+            int posA = ((originalIndex[a] - fallbackCursor) % size + size) % size
+            int posB = ((originalIndex[b] - fallbackCursor) % size + size) % size
+            return posA <=> posB
+        }.first()
+    }
 
     private Map parseRotationData(AuditPreparation prep) {
         Map m = new JsonSlurper().parseText(prep.getRotation_data()) as Map
