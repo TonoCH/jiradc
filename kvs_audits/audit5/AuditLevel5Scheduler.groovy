@@ -16,13 +16,10 @@ import groovy.json.JsonOutput
 /**
  * AuditLevel5Scheduler
  *
- * Mid-month rotation:
- *  - Fires on the 15th of each month (Interval is hidden / ignored on L5).
- *  - For each Audit Preparation creates up to N audits per month, where
- *    N = min(numberOfAuditors, numberOfUniqueProfitCenters).
- *  - Auditor assignment uses per-usage auditorHistory; when auditors <= unique PCs,
- *    each auditor can receive one audit per tick, otherwise auditors rotate over time
- *  - At most one audit per Profit Center per month (PCs rotate).
+ * Mid-month rotation (15th, Interval field ignored):
+ *  - up to N audits per month, N = min(auditors, unique Profit Centers)
+ *  - max one audit per PC per month; PCs picked by least-audited, then longest-unaudited
+ *  - usages and auditors sync live from the Audit Preparation each tick
  *
  * @author chabrecek.anton
  * Created on 5. 3. 2026.
@@ -31,10 +28,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
 
     public static final String auditLevel = CustomFieldsConstants.AUDIT_LEVEL_5
 
-    /**
-     * Static descriptor of behavioral rules — consumed by jobs/kvs/rulesAudit.groovy.
-     * Drift between descriptor and implementation is the whole point of the audit.
-     */
+    /** Behavioral descriptor consumed by jobs/kvs/rulesAudit.groovy. */
     public static final Map<String, Object> AUDIT_RULES = [
             auditLevel           : CustomFieldsConstants.AUDIT_LEVEL_5,
             handlerClass         : 'kvs_audits.audit5.AuditLevel5Handler',
@@ -44,13 +38,14 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             safetyLimit          : 12,
             intervalSource       : 'IGNORED — fixed interval enforced',
             fixedIntervalOverride: 'monthly-mid',
-            auditorRotation      : 'Per-usage auditorHistory; each pick assigns the live auditor with the lowest count for that usage, excluding auditors already used this tick',
-            usageRotation        : 'Coverage-first: PCs are ranked by the audit count of their least-audited usage (auditorHistory sum) so every usage is picked at least once before any usage repeats; usageTurnIndex is only a tie-break seed for equally-covered PCs. pcUsageIndex[pcKey] picks WHICH usage (A/B) of a split PC is used, preferring whichever half has fewer audits',
+            auditorRotation      : 'Per-usage auditorHistory: each pick takes the live auditor with the lowest count for that usage; no auditor twice per tick. Auditors sync live from the prep. When auditors > uniquePCs, surplus auditors skip that month (one-audit-per-PC cap), evening out via history.',
+            usageRotation        : 'PCs ranked by (min audit count of their usages, oldest lastAuditedDate, ring position); within a split PC the A/B half with fewer audits / older date goes first. Gives even coverage AND even per-PC cadence; robust to usage add/remove (no positional cursor).',
+            usageSync            : 'questions_usages reconciled from the prep each tick: new usages join as full init-shaped entries (specials due on current rotation day), deselected ones soft-removed (active=false, history kept), reselected re-activate. No new Audit Preparation needed.',
             auditsPerTick        : 'Up to N audits per month, N = min(numberOfAuditors, numberOfUniqueProfitCenters)',
             crossAudits          : 'Not supported (isCross hard-coded false)',
             onePcPerTick         : true,
             specialQuestions     : 'Per-FA (wpRotation[faKey]); semi-yearly=+6M, yearly=+12M',
-            rotationDataShape    : 'root.{usageTurnIndex, globalAuditorIndex (legacy/unused), pcUsageIndex[pcKey]->int, questions_usages[usageKey].{fas, currentFaIndex, auditors, currentAuditorIndex, rotationCount, auditorHistory[auditorName]->int, specialQuestions[qKey].wpRotation[faKey].nextRotationDate}}. Legacy keys workplaces/currentWorkplaceIndex are read transparently and migrated on write (RotationDataKeys).',
+            rotationDataShape    : 'root.{usageTurnIndex, globalAuditorIndex (legacy/unused), pcUsageIndex[pcKey]->int, questions_usages[usageKey].{active(bool; false=soft-removed), fas, currentFaIndex, auditors, currentAuditorIndex, rotationCount, lastAuditedDate(ISO; last planned Target End), auditorHistory[auditorName]->int, specialQuestions[qKey].wpRotation[faKey].nextRotationDate}}. Legacy keys workplaces/currentWorkplaceIndex migrated on write (RotationDataKeys).',
             notes                : 'Fixed interval = 15th of each month. AuditPreparation Interval field is hidden / ignored. Each PC at most one audit per month; when auditors > uniquePCs not every auditor gets an audit every month.'
     ]
 
@@ -62,10 +57,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
     void execute() {
         List<Issue> prepIssues = getPreparationIssues()
         logBasicInfo(prepIssues)
-
-        prepIssues.each { prepIssue ->
-            scheduleRotationsFor(prepIssue)
-        }
+        prepIssues.each { scheduleRotationsFor(it) }
     }
 
     private void scheduleRotationsFor(Issue prepIssue) {
@@ -96,7 +88,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             rotationDay = dateOfNextRotation.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
 
             if (rotationDay.equals(before)) {
-                logger.setErrorMessage("${prepIssue.getKey()} Rotation date did NOT advance (still ${rotationDay}). before date: ${before} Breaking to avoid infinite loop.")
+                logger.setErrorMessage("${prepIssue.getKey()} Rotation date did NOT advance (still ${rotationDay}). Breaking to avoid infinite loop.")
                 break
             }
         }
@@ -104,16 +96,12 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         if (safetyCounter == 0) {
             logger.setInfoMessage("No rotation for today")
         }
-
         if (safetyCounter >= SAFETY_LIMIT) {
             logger.setErrorMessage("Safety limit of ${SAFETY_LIMIT} rotations reached for ${prepIssue.key}. Exiting to prevent infinite loop.")
         }
     }
 
-    /**
-     * One mid-month rotation tick: creates up to N audits (N = min(auditors, uniquePCs)),
-     * each on a different PC, each sub-area (A/B) and auditor assignment rotated independently.
-     */
+    /** One mid-month tick: up to N audits (N = min(auditors, uniquePCs)), one PC each. */
     private void processRotation(Issue prepIssue,
                                  AuditLevel5Handler handler,
                                  AuditPreparation prep,
@@ -129,9 +117,14 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             return
         }
 
-        List<String> usageKeys = (usages.keySet() as List<String>).sort()
+        // Usages sync live from the prep; soft-removed ones keep their history.
+        syncUsagesWithPrep(prep, usages, rotationDay)
+
+        List<String> usageKeys = (usages.keySet() as List<String>)
+                .findAll { isUsageActive(usages[it]) }
+                .sort()
         if (usageKeys.isEmpty()) {
-            logger.setWarnMessage("No questions_usages for ${prepIssue.key}; advancing date only.")
+            logger.setWarnMessage("No active questions_usages for ${prepIssue.key}; advancing date only.")
             advanceDate(handler, rotationDay)
             return
         }
@@ -144,7 +137,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         }
         int auditorCount = liveAuditors.size()
 
-        // Group usages by Profit Center (split PC -> 2-entry sorted A/B list).
+        // Group usages by Profit Center (split PC -> sorted A/B list).
         Map<String, List<String>> pcToUsages = [:]
         usageKeys.each { String uk ->
             Issue pc = jqlSearcher.getPCFromQuestionUsage(uk, auditLevel)
@@ -164,102 +157,72 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
 
         int uniquePcCount = uniquePcKeys.size()
         int targetCount = Math.min(auditorCount, uniquePcCount)
-
-        int turnIdx = normalizeTurnIndex(data, uniquePcCount)
-        int gIdx = (data.globalAuditorIndex instanceof Number) ? ((Number) data.globalAuditorIndex).intValue() : 0
+        int turnIdx = mod(asInt(data.usageTurnIndex), uniquePcCount)
         Map<String, Object> pcUsageIndex = (data.pcUsageIndex ?: [:]) as Map<String, Object>
 
-        // Coverage-first pick: when uniquePcCount isn't a multiple of targetCount,
-        // a plain modular ring (old behaviour) lets some PCs land 2x in a cycle
-        // while others land only 1x — and a split (A/B) PC whose "short straw"
-        // pick always lands on the already-audited half leaves its sibling usage
-        // unaudited indefinitely (e.g. PCLA_B never got picked). Sort PCs by the
-        // audit count of their LEAST-audited usage first, so no usage repeats
-        // while another usage still has zero audits. Ties keep ring order so
-        // fully-covered PCs still rotate fairly among themselves.
-        Map<String, Integer> pcMinAuditCount = [:]
+        // Rank PCs: least audited first, then longest-unaudited (lastAuditedDate =
+        // planned Target End; "" = never), then ring position. Even coverage AND even
+        // per-PC cadence; usage add/remove can't corrupt it (no positional cursor).
+        Map<String, Integer> pcMinCount = [:]
+        Map<String, String> pcOldestDate = [:]
         uniquePcKeys.each { String pcKey ->
-            pcMinAuditCount[pcKey] = pcToUsages[pcKey].collect { auditCountFor(usages[it] as Map) }.min()
+            List<String> pcUsages = pcToUsages[pcKey]
+            int minCount = pcUsages.collect { auditCountFor(usages[it] as Map) }.min()
+            pcMinCount[pcKey] = minCount
+            // Date only from min-count usages — the actual pick candidates (a split
+            // PC must not gain priority via its already-more-audited half's date).
+            pcOldestDate[pcKey] = pcUsages
+                    .findAll { auditCountFor(usages[it] as Map) == minCount }
+                    .collect { lastAuditedDateFor(usages[it] as Map) }
+                    .min()
         }
         Map<String, Integer> ringPos = [:]
-        uniquePcKeys.eachWithIndex { String pcKey, int i ->
-            ringPos[pcKey] = ((i - turnIdx) % uniquePcCount + uniquePcCount) % uniquePcCount
-        }
-        List<String> pickedPcKeys = (uniquePcKeys as List<String>).sort { a, b ->
-            int byCoverage = pcMinAuditCount[a] <=> pcMinAuditCount[b]
-            byCoverage != 0 ? byCoverage : ringPos[a] <=> ringPos[b]
-        }.take(targetCount)
+        uniquePcKeys.eachWithIndex { String pcKey, int i -> ringPos[pcKey] = mod(i - turnIdx, uniquePcCount) }
 
-        if (pickedPcKeys.isEmpty()) {
-            logger.setWarnMessage("Nothing to rotate for ${prepIssue.key} on ${rotationDay}.")
-            advanceDate(handler, rotationDay)
-            return
-        }
+        List<String> pickedPcKeys = uniquePcKeys.sort(false) { a, b ->
+            int c = pcMinCount[a] <=> pcMinCount[b]
+            if (c) return c
+            c = pcOldestDate[a] <=> pcOldestDate[b]
+            c ?: ringPos[a] <=> ringPos[b]
+        }.take(targetCount)
 
         if (auditorCount > uniquePcCount) {
             logger.setWarnMessage("L5 ${prepIssue.key}: auditors=${auditorCount} > uniquePCs=${uniquePcCount}; only ${pickedPcKeys.size()} audits this month.")
         }
 
-        // Auditor pick is greedy least-used-for-this-usage (not a shared modular
-        // cursor with the PC ring — that caused fixed auditor<->PC pairs before).
-        // pcUsageIndex / auditorHistory are only committed after processSinglePick
-        // actually creates the audit, so a skipped pick doesn't burn its A/B or
-        // auditor turn.
+        // State (cursor, history) is committed only when the audit was really created,
+        // so a skipped pick doesn't burn its A/B or auditor turn.
         Set<String> usedThisMonth = [] as Set
         pickedPcKeys.each { String pcKey ->
             List<String> pcUsages = pcToUsages[pcKey]
-            int storedCursor = (pcUsageIndex[pcKey] instanceof Number) ? ((Number) pcUsageIndex[pcKey]).intValue() : 0
-            // Pick the least-audited usage under this PC (not a blind modular
-            // cursor), so an A/B half with zero audits is always chosen ahead
-            // of its sibling repeating. Ties fall back to the stored cursor so
-            // fully-covered split PCs still alternate A/B predictably.
-            String usageKey = pickLeastAuditedUsage(pcUsages, usages, storedCursor)
-            int subCursor = pcUsages.indexOf(usageKey)
-
+            String usageKey = pickLeastAuditedUsage(pcUsages, usages, asInt(pcUsageIndex[pcKey]))
             def u = usages[usageKey]
             if (u == null) {
                 logger.setErrorMessage("No rotation entry for ${usageKey}; skipping pick.")
                 return
             }
 
-            Map<String, Object> history = (u.auditorHistory ?: [:]) as Map
-            String best = null
-            int bestCount = Integer.MAX_VALUE
-            liveAuditors.each { String auditor ->
-                if (usedThisMonth.contains(auditor)) return
-                int count = (history[auditor] instanceof Number) ? ((Number) history[auditor]).intValue() : 0
-                if (count < bestCount) {
-                    bestCount = count
-                    best = auditor
-                }
-            }
-            if (best == null) {
+            // Least-used live auditor for this usage, at most one audit per auditor per tick.
+            Map history = (u.auditorHistory ?: [:]) as Map
+            String auditor = liveAuditors.findAll { !usedThisMonth.contains(it) }.min { asInt(history[it]) }
+            if (!auditor) {
                 logger.setErrorMessage("No available auditor for ${usageKey}; skipping pick.")
                 return
             }
 
-            boolean created = processSinglePick(prepIssue, handler, prep, rotationDay, usageKey, usages, best)
-
-            if (created) {
-                usedThisMonth << best
-                history[best] = bestCount + 1
+            if (processSinglePick(handler, prep, rotationDay, usageKey, u, auditor)) {
+                usedThisMonth << auditor
+                history[auditor] = asInt(history[auditor]) + 1
                 u.auditorHistory = history
-                pcUsageIndex[pcKey] = (subCursor + 1) % pcUsages.size()
+                pcUsageIndex[pcKey] = mod(pcUsages.indexOf(usageKey) + 1, pcUsages.size())
             } else {
-                logger.setWarnMessage("L5 ${prepIssue.key}: audit not created for usage=${usageKey}, pc=${pcKey}; cursor and auditor history not advanced.")
+                logger.setWarnMessage("L5 ${prepIssue.key}: audit not created for usage=${usageKey}, pc=${pcKey}; state not advanced.")
             }
         }
 
-        // Advance the PC ring by exactly `picks` regardless of per-pick success,
-        // so the tick always moves forward (avoids infinite loop / re-audit lock).
-        int picks = pickedPcKeys.size()
-        int newTurnIdx = (turnIdx + picks) % uniquePcCount
-
-        // globalAuditorIndex kept only for backward-compat/display; unused for selection now.
-        int newGIdx = (gIdx + picks) % auditorCount
-
-        data.usageTurnIndex = newTurnIdx
-        data.globalAuditorIndex = newGIdx
+        // Ring always advances by the number of picks so the tick moves forward.
+        data.usageTurnIndex = mod(turnIdx + pickedPcKeys.size(), uniquePcCount)
+        data.globalAuditorIndex = mod(asInt(data.globalAuditorIndex) + pickedPcKeys.size(), auditorCount) // legacy/display only
         data.pcUsageIndex = pcUsageIndex
         data.questions_usages = usages
         handler.updateRotationData(JsonOutput.toJson(data))
@@ -267,45 +230,26 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
         advanceDate(handler, rotationDay)
     }
 
-    /**
-     * @return true if an Audit was actually created for this pick, false if skipped.
-     */
-    private boolean processSinglePick(Issue prepIssue,
-                                      AuditLevel5Handler handler,
+    /** @return true if an Audit was actually created for this pick. */
+    private boolean processSinglePick(AuditLevel5Handler handler,
                                       AuditPreparation prep,
                                       LocalDate rotationDay,
                                       String usageKey,
-                                      Map usages,
-                                      String forcedAuditor) {
-        def u = usages[usageKey]
-        if (u == null) {
-            logger.setErrorMessage("No rotation entry for ${usageKey}; skipping pick.")
-            return false
-        }
-
+                                      def u,
+                                      String auditor) {
         Issue pc = jqlSearcher.getPCFromQuestionUsage(usageKey, auditLevel)
         if (!pc) {
             logger.setErrorMessage("Invalid usageKey '${usageKey}' (PC not found); skipping pick.")
             return false
         }
 
-        String subAreaLetter = parseSubAreaLetterOrNull(usageKey)
-        if (!subAreaLetter) {
-            List<String> aKeys = jqlSearcher.getFunctionalAreasKeys(pc, "A") ?: []
-            List<String> bKeys = jqlSearcher.getFunctionalAreasKeys(pc, "B") ?: []
-            boolean onlyA = aKeys && !bKeys
-            boolean onlyB = bKeys && !aKeys
-            if (onlyA) subAreaLetter = "A"
-            else if (onlyB) subAreaLetter = "B"
-            else {
-                logger.setErrorMessage("Level 5 usage '${usageKey}' has no A/B and PC ${pc.key} has both; skipping pick.")
-                return false
-            }
+        List<String> liveSubAreas = resolveLiveSubAreas(usageKey, pc)
+        if (liveSubAreas == null) {
+            logger.setErrorMessage("Level 5 usage '${usageKey}' has no A/B and PC ${pc.key} has both; skipping pick.")
+            return false
         }
-
-        List<String> liveSubAreas = jqlSearcher.getFunctionalAreasKeys(pc, subAreaLetter)
         if (!liveSubAreas) {
-            logger.setErrorMessage("No Functional Areas for ${pc.key} sub-area '${subAreaLetter}' (usage ${usageKey}); skipping pick.")
+            logger.setErrorMessage("No Functional Areas for ${pc.key} sub-area of usage ${usageKey}; skipping pick.")
             return false
         }
 
@@ -316,34 +260,28 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             return false
         }
 
-        // Reconcile per-usage auditors list with live ones (keeps JSON in sync)
+        // Keeps the per-usage auditors list in the JSON in sync with the prep.
         getLiveAuditors(prep, usageKey, u)
 
-        boolean isCross = false
-
-        if (!forcedAuditor) {
-            logger.setErrorMessage("No auditor available for usage ${usageKey}; skipping pick.")
-            return false
-        }
-
-        // Pick FA via per-usage rotation-units cursor
+        // FA via per-usage cursor.
         List<String> wps = readRotationUnits(u)
-        int cur = Math.max(0, readRotationIndex(u))
-        int idx = cur % wps.size()
+        int idx = Math.max(0, readRotationIndex(u)) % wps.size()
         String faKey = wps[idx]
 
-        List<String> specialDueForThisAudit = computeSpecialDueForFa(u, faKey, rotationDay)
+        List<String> specialDue = computeSpecialDueForFa(u, faKey, rotationDay)
 
-        logger.setInfoMessage("RotationJob(L5): usage=${usageKey}, subArea=${faKey}, auditor=${forcedAuditor}, cross=${isCross}")
-        // State (rotationCount, FA cursor) advances only after rotateOneAudit succeeds (it throws on failure).
-        handler.rotateOneAudit(usageKey, faKey, forcedAuditor, isCross, rotationDay, specialDueForThisAudit)
-        u.rotationCount = (u.rotationCount ?: 0) + 1
-        writeRotationIndex(u, (idx + 1) % wps.size())
+        logger.setInfoMessage("RotationJob(L5): usage=${usageKey}, subArea=${faKey}, auditor=${auditor}, cross=false")
+        // State advances only after rotateOneAudit succeeds (it throws on failure).
+        handler.rotateOneAudit(usageKey, faKey, auditor, false, rotationDay, specialDue)
+        u.rotationCount = asInt(u.rotationCount) + 1
+        // Last planned Target End (same formula as rotateOneAudit); drives the cadence tie-break.
+        u.lastAuditedDate = CommonHelper.snapToNearestMonday(rotationDay)
+                .plusDays(CustomFieldsConstants.NUM_OF_DAYS_FOR_TARGET_END).toString()
+        writeRotationIndex(u, mod(idx + 1, wps.size()))
 
-        if (specialDueForThisAudit) {
-            commitSpecialDue(u, faKey, specialDueForThisAudit, rotationDay)
+        if (specialDue) {
+            commitSpecialDue(u, faKey, specialDue, rotationDay)
         }
-
         return true
     }
 
@@ -355,64 +293,130 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
 
     // ---------- helpers ----------
 
-    /** Total audits ever created for a usage = sum of its per-auditor history counts. */
-    private int auditCountFor(Map u) {
-        Map history = (u?.auditorHistory ?: [:]) as Map
-        int total = 0
-        history.values().each { v -> total += (v instanceof Number) ? ((Number) v).intValue() : 0 }
-        return total
+    /**
+     * Reconciles questions_usages with the usages currently selected on the prep:
+     * new usages join as full entries, deselected ones are soft-removed
+     * (active=false, history kept), reselected ones re-activate.
+     */
+    private void syncUsagesWithPrep(AuditPreparation prep, Map usages, LocalDate rotationDay) {
+        Map<String, Issue> livePcByUsage = [:]
+        (prep.getQuestionUsage() ?: [])
+                .findAll { it?.trim() }
+                .collect { it.trim() }
+                .unique()
+                .each { String uk ->
+                    Issue pc = jqlSearcher.getPCFromQuestionUsage(uk, auditLevel)
+                    if (pc) livePcByUsage[uk] = pc
+                }
+
+        livePcByUsage.each { String uk, Issue pc ->
+            def u = usages[uk]
+            if (u == null) {
+                usages[uk] = newUsageEntry(uk, pc, rotationDay)
+                logger.setInfoMessage("L5 sync: added new Question Usage ${uk} to rotation.")
+            } else if (u.active == false) {
+                u.active = true
+                logger.setInfoMessage("L5 sync: re-activated Question Usage ${uk}.")
+            }
+        }
+
+        usages.each { String uk, def u ->
+            if (!livePcByUsage.containsKey(uk) && u?.active != false) {
+                u.active = false
+                logger.setWarnMessage("L5 sync: Question Usage ${uk} no longer on prep; marked inactive (history kept).")
+            }
+        }
     }
 
     /**
-     * Picks the usage under a (possibly split A/B) PC with the fewest audits so
-     * far. Guarantees a never-audited half is chosen before its sibling repeats.
-     * Ties (equal audit counts) fall back to the stored rotation cursor so a
-     * fully-covered split PC still alternates A/B in a stable order.
+     * Fresh init-shaped entry for a usage added via sync. Specials are seeded due
+     * on the current rotation day (= included in the usage's first audit),
+     * mirroring the pool-only init in AuditHandlerBase.
      */
+    private Map newUsageEntry(String uk, Issue pc, LocalDate rotationDay) {
+        List<String> fas = resolveLiveSubAreas(uk, pc) ?: []
+        if (!fas) {
+            logger.setWarnMessage("L5 sync: no Functional Areas resolved for new usage ${uk} yet; pick-time reconciliation will fill them in.")
+        }
+
+        Map<String, Object> specials = [:]
+        (jqlSearcher.findSpecialQuestionsByUsage(uk) ?: []).each { qIssue ->
+            specials[qIssue.key] = [wpRotation: fas.collectEntries { [(it): [nextRotationDate: rotationDay.toString()]] }]
+        }
+
+        return [
+                usageKey                : uk,
+                active                  : true,
+                fas                     : fas,
+                currentFaIndex          : 0,
+                auditors                : [],
+                currentAuditorIndex     : 0,
+                currentCrossAuditorIndex: 0,
+                rotationCount           : 0,
+                lastAuditedDate         : "",
+                auditorHistory          : [:],
+                crossAuditHistory       : [],
+                specialQuestions        : specials
+        ]
+    }
+
+    /**
+     * Live FAs for a usage's sub-area; no A/B suffix falls back to the PC's single
+     * sub-area. Returns null when ambiguous (no suffix, PC has both A and B).
+     */
+    private List<String> resolveLiveSubAreas(String usageKey, Issue pc) {
+        String letter = parseSubAreaLetterOrNull(usageKey)
+        if (!letter) {
+            List<String> aKeys = jqlSearcher.getFunctionalAreasKeys(pc, "A") ?: []
+            List<String> bKeys = jqlSearcher.getFunctionalAreasKeys(pc, "B") ?: []
+            if (aKeys && !bKeys) letter = "A"
+            else if (bKeys && !aKeys) letter = "B"
+            else return null
+        }
+        return jqlSearcher.getFunctionalAreasKeys(pc, letter) ?: []
+    }
+
+    private boolean isUsageActive(def u) {
+        return u != null && u.active != false
+    }
+
+    /** Last planned Target End ("" = never audited, sorts as oldest). */
+    private String lastAuditedDateFor(Map u) {
+        def d = u?.lastAuditedDate
+        return (d instanceof String) ? d : ""
+    }
+
+    /** Total audits for a usage = sum of its auditorHistory counts. */
+    private int auditCountFor(Map u) {
+        ((u?.auditorHistory ?: [:]) as Map).values().sum { asInt(it) } ?: 0
+    }
+
+    /** Least-audited usage of a (possibly A/B split) PC; ties: older date, then stored cursor. */
     private String pickLeastAuditedUsage(List<String> pcUsages, Map usages, int storedCursor) {
         int size = pcUsages.size()
         if (size <= 1) return pcUsages[0]
-        int fallbackCursor = ((storedCursor % size) + size) % size
-        // Fixed original-index map so tie-break positions stay stable while sorting a copy.
-        Map<String, Integer> originalIndex = [:]
-        pcUsages.eachWithIndex { String uk, int i -> originalIndex[uk] = i }
-        List<String> copy = new ArrayList<String>(pcUsages)
-        return copy.sort { a, b ->
-            int countA = auditCountFor(usages[a] as Map)
-            int countB = auditCountFor(usages[b] as Map)
-            if (countA != countB) return countA <=> countB
-            int posA = ((originalIndex[a] - fallbackCursor) % size + size) % size
-            int posB = ((originalIndex[b] - fallbackCursor) % size + size) % size
-            return posA <=> posB
-        }.first()
+        int cursor = mod(storedCursor, size)
+        return pcUsages.min { a, b ->
+            int c = auditCountFor(usages[a] as Map) <=> auditCountFor(usages[b] as Map)
+            if (c) return c
+            c = lastAuditedDateFor(usages[a] as Map) <=> lastAuditedDateFor(usages[b] as Map)
+            c ?: mod(pcUsages.indexOf(a) - cursor, size) <=> mod(pcUsages.indexOf(b) - cursor, size)
+        }
     }
 
     private Map parseRotationData(AuditPreparation prep) {
-        Map m = new JsonSlurper().parseText(prep.getRotation_data()) as Map
-        if (!(m.globalAuditorIndex instanceof Number)) {
-            m.globalAuditorIndex = 0
-        }
-        return m
-    }
-
-    private int normalizeTurnIndex(Map data, int usageCount) {
-        int turnIdx = (data.usageTurnIndex instanceof Number) ? (int) data.usageTurnIndex : 0
-        return ((turnIdx % usageCount) + usageCount) % usageCount
+        new JsonSlurper().parseText(prep.getRotation_data()) as Map
     }
 
     private List<String> computeSpecialDueForFa(Map u, String faKey, LocalDate rotationDay) {
-        List<String> specialDueForThisAudit = []
-        Map specials = (u.specialQuestions ?: [:]) as Map
-        specials.each { aqKey, detail ->
+        List<String> due = []
+        ((u.specialQuestions ?: [:]) as Map).each { aqKey, detail ->
             def nextStr = (detail?.wpRotation ?: [:])?[faKey]?.nextRotationDate
-            if (nextStr) {
-                LocalDate due = LocalDate.parse(nextStr as String)
-                if (!due.isAfter(rotationDay)) {
-                    specialDueForThisAudit << (aqKey as String)
-                }
+            if (nextStr && !LocalDate.parse(nextStr as String).isAfter(rotationDay)) {
+                due << (aqKey as String)
             }
         }
-        return specialDueForThisAudit
+        return due
     }
 
     private void commitSpecialDue(Map u, String faKey, List<String> specials, LocalDate rotationDay) {
@@ -421,8 +425,7 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
             int months = monthsForOccurrence(occ)
             if (months > 0) {
                 def curStr = u.specialQuestions[aqKey]?.wpRotation?[faKey]?.nextRotationDate
-                LocalDate curD = curStr ? LocalDate.parse(curStr as String) : rotationDay
-                LocalDate nxt = curD.plusMonths(months)
+                LocalDate nxt = (curStr ? LocalDate.parse(curStr as String) : rotationDay).plusMonths(months)
 
                 if (!u.specialQuestions[aqKey]) u.specialQuestions[aqKey] = [wpRotation: [:]]
                 if (!u.specialQuestions[aqKey].wpRotation) u.specialQuestions[aqKey].wpRotation = [:]
@@ -446,13 +449,19 @@ class AuditLevel5Scheduler extends AuditScheduler implements IAuditScheduler {
     private String getQuestionOccurrence(String questionKey) {
         def qIssue = myBaseUtil.getIssueByKey(questionKey)
         if (!qIssue) return null
-        def raw = myBaseUtil.getCustomFieldValue(qIssue, Question.AUDIT_INTERVAL_OCCURANCE_FIELD_NAME)
-        return (raw ?: "") as String
+        (myBaseUtil.getCustomFieldValue(qIssue, Question.AUDIT_INTERVAL_OCCURANCE_FIELD_NAME) ?: "") as String
     }
 
     private String parseSubAreaLetterOrNull(String usageKey) {
-        // *_A_Level_5 or *_B_Level_5
-        def m = (usageKey =~ /_(A|B)_Level_5$/)
+        def m = (usageKey =~ /_(A|B)_Level_5$/)  // *_A_Level_5 / *_B_Level_5
         return m ? m[0][1] : null
+    }
+
+    private static int asInt(def v) {
+        (v instanceof Number) ? ((Number) v).intValue() : 0
+    }
+
+    private static int mod(int a, int n) {
+        ((a % n) + n) % n
     }
 }

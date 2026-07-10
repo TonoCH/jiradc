@@ -171,6 +171,9 @@ class AuditLevel5Handler extends AuditHandlerBase {
             data.rotationCount            = 0
             data.crossAuditHistory        = []
             data.auditorHistory           = [:]
+            data.active                   = true
+            // "" = never audited (sorts as oldest); real date set below for initial-audit usages.
+            data.lastAuditedDate          = ""
 
             logger.setInfoMessage(">> [INIT] ${key}: hadInitial=${hadInitial}, currentFaIndex=${data.currentFaIndex}, fas=${data.fas}")
             logger.setInfoMessage(">> [INIT] ${key}: globalAuditorIndex=${initialGlobalAuditorIndex}, auditors=${auditors}")
@@ -184,6 +187,8 @@ class AuditLevel5Handler extends AuditHandlerBase {
                 if (u != null) {
                     String usedAuditor = auditors[k % auditorCount]
                     u.auditorHistory = [(usedAuditor): 1]
+                    // Planned Target End of the initial audit (same meaning as in the scheduler).
+                    u.lastAuditedDate = startDate.plusDays(CustomFieldsConstants.NUM_OF_DAYS_FOR_TARGET_END).toString()
                 }
             }
         }
