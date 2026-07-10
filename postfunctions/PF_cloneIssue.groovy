@@ -69,6 +69,8 @@ newIssue.setDescription(parentIssue.description)
 newIssue.setIssueTypeId(IssueTypeIdConstants.BUG)
 newIssue.setReporter(currentUser)
 newIssue.setPriority(parentIssue.priority)
+newIssue.setLabels(parentIssue.labels)
+
 def affectedVersions = targetProject.versions.findAll{ it.name in currentIssue?.affectedVersions*.name }
 if (affectedVersions) {
     newIssue.setAffectedVersions(affectedVersions)
@@ -92,16 +94,41 @@ if (hashMapEntries != null) {
     Option childOption = hashMapEntries.get(CascadingSelectCFType.CHILD_KEY)
     Options options = OptionUtil.getOption(targetProject, newIssue, cfProductArea)
     Option newParentOption = options.find { it.value == parentOption?.value }
-    Option newChildOption = newParentOption?.childOptions?.find { it.value == childOption?.value }
 
-    if (newChildOption) {
+
+    //region new changes from 9.7.2026
+    //Option newChildOption = newParentOption?.childOptions?.find { it.value == childOption?.value }
+
+    if (!newParentOption) {
+        productAreaComment = "*NOTE*: Product Area '${parentOption?.value}' not found in target project."
+    } else {
+
+        def newOptions = [:]
+        newOptions.put(CascadingSelectCFType.PARENT_KEY, newParentOption)
+
+        if (childOption) {
+            Option newChildOption = newParentOption.childOptions?.find {it.value == childOption?.value }
+
+            if (newChildOption) {
+                newOptions.put(CascadingSelectCFType.CHILD_KEY, newChildOption)
+            } else {
+                productAreaComment = "*NOTE*: Product Area '${parentOption.value} -> ${childOption.value}' not found in target project."
+            }
+        }
+
+        newIssue.setCustomFieldValue(cfProductArea, newOptions)
+    }
+
+    /*if (newChildOption) {
         def newOptions = new HashMap()
         newOptions.put(CascadingSelectCFType.PARENT_KEY, newParentOption)
         newOptions.put(CascadingSelectCFType.CHILD_KEY, newChildOption)
         newIssue.setCustomFieldValue(cfProductArea, newOptions)
     } else {
         productAreaComment = "*NOTE*: invalid product area: ${parentOption?.value} - ${childOption?.value}"
-    }
+    }*/
+
+    //endregion
 }
 
 //Root cause category
