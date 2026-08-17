@@ -14,6 +14,7 @@ import com.onresolve.scriptrunner.runner.rest.common.CustomEndpointDelegate
 import groovy.transform.BaseScript
 import groovy.json.JsonOutput
 import kvs_audits.common.JqlSearcher
+import kvs_audits.common.L1DaySchedule
 import kvs_audits.issueType.Audit
 import kvs_audits.issueType.Question
 
@@ -23,7 +24,6 @@ import javax.ws.rs.core.Response
 
 import com.atlassian.jira.issue.Issue
 import utils.MyBaseUtil
-import utils.CustomFieldUtil
 import kvs_audits.common.CustomFieldsConstants
 
 @BaseScript CustomEndpointDelegate delegate
@@ -31,7 +31,6 @@ import kvs_audits.common.CustomFieldsConstants
 kvsLevel1Data(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admins"]) { MultivaluedMap queryParams ->
 
     def myBaseUtil = new MyBaseUtil()
-    def customFieldUtil = new CustomFieldUtil()
     def action = queryParams.getFirst("action") ?: ""
 
     def result
@@ -151,14 +150,11 @@ kvsLevel1Data(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
                         text = q.summary ?: ""
                     }
 
-                    // Audit Day field (Select List single) - not exist yet
-                    String dayValue = null
-                    try {
-                        def auditDayRaw = myBaseUtil.getCustomFieldValue(q, "Audit Day")
-                        dayValue = auditDayRaw ? customFieldUtil.getFieldValue_SingleSelect(auditDayRaw) : null
-                    } catch (Exception ignored) {
-                        // Field does not exist yet — treat as "every day"
-                    }
+                    // Weekday on which this question must be audited for the
+                    // selected Profit Center. Comes from the static per-PC
+                    // schedule (source: KVS_Level1_question frequency xlsx).
+                    // null → question runs every day → no greyed day cells.
+                    String dayValue = L1DaySchedule.dayFor(pcKeyValue, idStr)
 
                     [
                             key     : q.key,
