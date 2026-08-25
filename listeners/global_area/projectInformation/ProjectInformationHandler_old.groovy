@@ -22,13 +22,13 @@ import com.atlassian.jira.web.bean.PagerFilter
 import org.apache.log4j.Logger
 import utils.mail_notifiers.Mailer
 
-class ProjectInformationHandler {
+class ProjectInformationHandler_old {
 
     static final Long CF_PROJECT_INFORMATION_ID      = 18600L //Select List (multiple choices)
-    static final Long CF_PROJECT_INFORMATION_TEXT_ID = 18700L //ext mirror
+    static final Long CF_PROJECT_INFORMATION_TEXT_ID = 18700L //text mirror
     //static final Long CF_PROJECT_INFORMATION_FLAG_ID = 18801L //numeric flag, except Initiative
     static final Long CF_PROJECT_INFORMATION_OVERRIDE_KEY_ID = 18802L
-    private final def cfOverrideKey = cfManager.getCustomFieldObject(CF_PROJECT_INFORMATION_OVERRIDE_KEY_ID
+    private final def cfOverrideKey = cfManager.getCustomFieldObject(CF_PROJECT_INFORMATION_OVERRIDE_KEY_ID)
 
     static final String CF_PARENT_LINK = "customfield_10301"
     static final String CF_EPIC_LINK   = "customfield_10001"

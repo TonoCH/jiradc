@@ -1,29 +1,38 @@
 package kvs_audits.common
 
 import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.config.properties.APKeys
 import com.atlassian.jira.event.type.EventDispatchOption
 import com.atlassian.jira.issue.CustomFieldManager
-import com.atlassian.jira.issue.MutableIssue
 import com.atlassian.jira.issue.Issue
 import com.atlassian.jira.issue.IssueInputParametersImpl
+import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.fields.CustomField
+import com.atlassian.jira.issue.link.IssueLinkTypeManager
 import com.atlassian.jira.user.ApplicationUser
 import kvs_audits.KVSLogger
 import kvs_audits.issueType.Audit
 import kvs_audits.issueType.AuditPreparation
+import kvs_audits.issueType.BaseIssue
 import kvs_audits.issueType.Question
 import utils.CustomFieldUtil
 import utils.MyBaseUtil
-import com.atlassian.jira.config.properties.APKeys
-import com.atlassian.jira.issue.link.IssueLinkTypeManager
-import kvs_audits.issueType.BaseIssue
 
 import java.sql.Timestamp
-import java.time.ZoneId
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
  * ManualMeasure
+ *
+ * Creates Audit -> Question -> Measure structure from Manual Measure issue.
+ *
+ * Important:
+ * - Audit Location is not copied during SET NOK transition.
+ *   It is set by CommonHelper.createQuestion/updateLocationOnQuestion from created Audit.
+ * - Questions are not copied to created Audit to avoid duplicate question creation
+ *   by AuditManualUnplanned listener.
  *
  * @author chabrecek.anton
  * Created on 23/06/2026.
@@ -34,6 +43,7 @@ class ManualMeasure {
     protected CustomFieldUtil customFieldUtil = new CustomFieldUtil()
     protected MyBaseUtil myBaseUtil = new MyBaseUtil()
     protected CustomFieldManager customFieldManager = ComponentAccessor.getCustomFieldManager()
+
     protected ApplicationUser runAs = ComponentAccessor.userManager.getUserByKey("jira.bot")
     protected def issueService = ComponentAccessor.getIssueService()
     protected def issueManager = ComponentAccessor.getIssueManager()
@@ -42,10 +52,20 @@ class ManualMeasure {
     protected ApplicationUser loggedInUser = ComponentAccessor.jiraAuthenticationContext.loggedInUser
 
     private static final int QUESTION_SET_NOK_TRANSITION_ID = 71
+
+    /**
+     * Do not include Question.AUDIT_LOCATION_FIELD_NAME here.
+     *
+     * Reason:
+     * Manual Measure Audit Location can contain a value which does not fit the
+     * transition field filter on Question, for example customfield_17519.
+     * CommonHelper.createQuestion() already sets Audit Location from Audit:
+     * - Level 2 -> Workplaces
+     * - Level 3 -> Functional Area
+     */
     private static final List<String> MEASURE_TRANSITION_FIELD_NAMES = [
             Question.DEVIATION_FIELD_NAME,
             Question.MEASURE_FIELD_NAME,
-            Question.AUDIT_LOCATION_FIELD_NAME,
             Question.PERSON_RESPONSIBILITY_FIELD_NAME,
             "Notes"
     ]
@@ -55,15 +75,12 @@ class ManualMeasure {
             return
         }
 
-        /*if (eventIssue.description?.contains("MM_LOCK")) {
-            return
-        }*/
-
         MutableIssue mutable = issueManager.getIssueObject(eventIssue.id)
-        mutable.setDescription(mutable.description ?: "");//+ "\nMM_LOCK")
-        issueManager.updateIssue(loggedInUser, mutable, EventDispatchOption.DO_NOT_DISPATCH, false)
+        mutable.setDescription(mutable.description ?: "")
+        issueManager.updateIssue(actor(), mutable, EventDispatchOption.DO_NOT_DISPATCH, false)
 
         List<String> createdKeys = []
+
         try {
             Issue createdAudit = createAuditFromManualMeasure(eventIssue)
             createdKeys << createdAudit.key
@@ -73,9 +90,10 @@ class ManualMeasure {
                 throw new IllegalStateException("Manual Measure needs exactly 1 Question.")
             }
 
-            String assignee = eventIssue.assignee?.name ?: loggedInUser?.name
+            String assignee = eventIssue.assignee?.name ?: actor()?.name
 
             CommonHelper helper = new CommonHelper()
+
             Issue createdQuestion = helper.createQuestion(createdAudit, selectedQuestionTemplate, assignee)
             if (!createdQuestion) {
                 throw new IllegalStateException("Question was not created.")
@@ -93,8 +111,10 @@ class ManualMeasure {
             appendAuditLinkToDescription(eventIssue, createdAudit, createdQuestion, createdMeasure)
 
             logger.setInfoMessage("Manual Measure DONE: ${createdAudit.key}, ${createdQuestion.key}, ${createdMeasure.key}")
-// check if all was created and set/ report in by logger than delete this issue
-            //new CommonHelper().deleteIssue(runAs, eventIssue)
+
+            // Delete original Manual Measure if needed after successful generation.
+            // new CommonHelper().deleteIssue(runAs, eventIssue)
+
         } catch (Exception e) {
             logger.setErrorMessage("Manual Measure failed: ${e.message}")
             rollback(createdKeys)
@@ -104,21 +124,22 @@ class ManualMeasure {
 
     private Issue createAuditFromManualMeasure(Issue mmIssue) {
         IssueInputParametersImpl params = new IssueInputParametersImpl()
+
         params.setProjectId(mmIssue.projectObject.id)
         params.setIssueTypeId(getIssueTypeIdByName(CustomFieldsConstants.AUDIT))
         params.setSummary(mmIssue.summary ?: "Manual audit for ${mmIssue.key}")
         params.setDescription(mmIssue.description)
-        params.setReporterId(mmIssue.reporter?.name ?: loggedInUser?.name)
-        params.setAssigneeId(mmIssue.assignee?.name ?: loggedInUser?.name)
+        params.setReporterId(mmIssue.reporter?.name ?: actor()?.name)
+        params.setAssigneeId(mmIssue.assignee?.name ?: actor()?.name)
 
         copyAuditFields(mmIssue, params)
 
-        def validation = issueService.validateCreate(loggedInUser, params)
+        def validation = issueService.validateCreate(actor(), params)
         if (!validation.valid) {
             throw new IllegalStateException("Audit validateCreate failed: ${validation.errorCollection}")
         }
 
-        def result = issueService.create(loggedInUser, validation)
+        def result = issueService.create(actor(), validation)
         if (!result.valid) {
             throw new IllegalStateException("Audit create failed: ${result.errorCollection}")
         }
@@ -136,19 +157,205 @@ class ManualMeasure {
         return createdAudit
     }
 
+    /**
+     * Copies only values needed on Audit.
+     *
+     * Questions are intentionally not copied to created Audit.
+     * Otherwise AuditManualUnplanned listener can create question subtasks
+     * before this ManualMeasure flow creates its own selected question.
+     */
+    private void copyAuditFields(Issue mmIssue, IssueInputParametersImpl params) {
+        def pc = getManualMeasureField(mmIssue, "Profit Center", Audit.PROFIT_CENTER_FIELD)
+        def fa = getManualMeasureField(mmIssue, "Functional Area", Audit.FUNCTIONAL_AREA_FIELD)
+        def wpc = getManualMeasureField(mmIssue, "Workplaces", Audit.WORKPLACES_FIELD)
+
+        def auditLevelValue = myBaseUtil.getCustomFieldValueById(mmIssue, AuditPreparation.AUDIT_LEVEL_FIELD.id)
+
+        logger.setInfoMessage("ManualMeasure copyAuditFields PC=${debugIssueValue(pc)}")
+        logger.setInfoMessage("ManualMeasure copyAuditFields FA=${debugIssueValue(fa)}")
+        logger.setInfoMessage("ManualMeasure copyAuditFields WPC=${debugIssueValue(wpc)}")
+        logger.setInfoMessage("ManualMeasure copyAuditFields AuditLevel=${auditLevelValue}")
+
+        String pcKey = firstIssueKey(pc)
+        if (pcKey) {
+            params.addCustomFieldValue(Audit.PROFIT_CENTER_FIELD.id, pcKey)
+        }
+
+        String faKey = firstIssueKey(fa)
+        if (faKey) {
+            params.addCustomFieldValue(
+                    Audit.FUNCTIONAL_AREA_FIELD.id,
+                    [faKey] as String[]
+            )
+        }
+
+        String[] wpKeys = issueKeysArray(wpc)
+        if (wpKeys && wpKeys.length > 0) {
+            params.addCustomFieldValue(
+                    Audit.WORKPLACES_FIELD.id,
+                    wpKeys
+            )
+        }
+
+        def auditLevelOptionId = auditLevelValue
+                ? customFieldUtil.getOptionIdByValue(AuditPreparation.AUDIT_LEVEL_FIELD_NAME, auditLevelValue.toString())
+                : null
+
+        if (auditLevelOptionId) {
+            params.addCustomFieldValue(
+                    AuditPreparation.AUDIT_LEVEL_FIELD.id,
+                    auditLevelOptionId.toString()
+            )
+        }
+
+        def auditTypeOptionId = customFieldUtil.getOptionIdByValue(Audit.AUDIT_TYPE_FIELD_NAME, Audit.MANUAL)
+        if (!auditTypeOptionId) {
+            throw new IllegalStateException("Audit Type option id not found for value: ${Audit.MANUAL}")
+        }
+
+        params.addCustomFieldValue(
+                Audit.AUDIT_TYPE_FIELD.id,
+                auditTypeOptionId.toString()
+        )
+
+        def targetStartCf = CustomFieldsConstants.getCustomFieldByName(AuditPreparation.TARGET_START_FIELD_NAME)
+        if (!targetStartCf) {
+            throw new IllegalStateException("Custom field not found: ${AuditPreparation.TARGET_START_FIELD_NAME}")
+        }
+
+        def targetStartRaw = myBaseUtil.getCustomFieldValueById(mmIssue, targetStartCf.id)
+        String targetStartValue = toDatePickerValue(targetStartRaw)
+
+        if (!targetStartValue) {
+            throw new IllegalStateException("Target start is empty on Manual Measure.")
+        }
+
+        params.addCustomFieldValue(
+                targetStartCf.id,
+                [targetStartValue] as String[]
+        )
+
+        params.addCustomFieldValue(
+                CustomFieldsConstants.PARENT_LINK_FIELD_ID,
+                mmIssue.key
+        )
+    }
+
+    /**
+     * Reads from Audit field id first, then from all custom fields with given name.
+     *
+     * This is important because in Jira you can have fields with same display name
+     * but different customfield ids or contexts. The old getCustomFieldObjectByName()
+     * can return the wrong field when names are duplicated.
+     */
+    private def getManualMeasureField(Issue issue, String fieldName, CustomField auditField) {
+        def byAuditFieldId = null
+
+        if (auditField) {
+            byAuditFieldId = myBaseUtil.getCustomFieldValue(issue, auditField.id)
+            if (hasValue(byAuditFieldId)) {
+                return byAuditFieldId
+            }
+
+            byAuditFieldId = issue.getCustomFieldValue(auditField)
+            if (hasValue(byAuditFieldId)) {
+                return byAuditFieldId
+            }
+        }
+
+        return getFirstNonEmptyCustomFieldValueByName(issue, fieldName)
+    }
+
+    private def getFirstNonEmptyCustomFieldValueByName(Issue issue, String fieldName) {
+        List<CustomField> fields = customFieldManager.getCustomFieldObjects()
+                .findAll { CustomField cf -> cf.name == fieldName }
+
+        for (CustomField cf : fields) {
+            def value = issue.getCustomFieldValue(cf)
+            if (hasValue(value)) {
+                logger.setInfoMessage("ManualMeasure field '${fieldName}' resolved by custom field id ${cf.id}")
+                return value
+            }
+        }
+
+        def fallback = myBaseUtil.getCustomFieldValue(issue, fieldName)
+        if (hasValue(fallback)) {
+            logger.setInfoMessage("ManualMeasure field '${fieldName}' resolved by MyBaseUtil name fallback")
+            return fallback
+        }
+
+        return null
+    }
+
+    private boolean hasValue(def value) {
+        if (value == null) {
+            return false
+        }
+
+        if (value instanceof Collection) {
+            return !value.isEmpty()
+        }
+
+        if (value instanceof String) {
+            return value.trim().length() > 0
+        }
+
+        return true
+    }
+
     private Issue firstIssue(def raw) {
-        if (raw == null) {
-            return null
+        List<Issue> issues = asIssueList(raw)
+        return issues ? issues.first() : null
+    }
+
+    private List<Issue> asIssueList(def raw) {
+        if (!hasValue(raw)) {
+            return []
         }
-        if (raw instanceof List) {
-            return raw ? raw.first() as Issue : null
+
+        if (raw instanceof Issue) {
+            return [raw]
         }
-        return raw as Issue
+
+        if (raw instanceof Collection) {
+            return raw.collect { item ->
+                if (item instanceof Issue) {
+                    return item
+                }
+
+                String key = stringifyForParams(item)
+                return key ? issueManager.getIssueObject(key) : null
+            }.findAll { it } as List<Issue>
+        }
+
+        String key = stringifyForParams(raw)
+        Issue issue = key ? issueManager.getIssueObject(key) : null
+        return issue ? [issue] : []
+    }
+
+    private String firstIssueKey(def raw) {
+        Issue issue = firstIssue(raw)
+        return issue?.key
+    }
+
+    private String[] issueKeysArray(def raw) {
+        List<Issue> issues = asIssueList(raw)
+        return issues.collect { it.key }.findAll { it } as String[]
+    }
+
+    private String debugIssueValue(def raw) {
+        List<Issue> issues = asIssueList(raw)
+        if (issues) {
+            return issues.collect { "${it.key} ${it.summary}" }.join(", ")
+        }
+
+        return raw == null ? "null" : raw.toString()
     }
 
     private Map resolveAuditContextFromMm(Issue mmIssue) {
-        Issue pcIssue = firstIssue(myBaseUtil.getCustomFieldValue(mmIssue, Audit.PROFIT_CENTER_FIELD.id))
-        Issue faIssue = firstIssue(myBaseUtil.getCustomFieldValue(mmIssue, Audit.FUNCTIONAL_AREA_FIELD.id))
+        Issue pcIssue = firstIssue(getManualMeasureField(mmIssue, "Profit Center", Audit.PROFIT_CENTER_FIELD))
+        Issue faIssue = firstIssue(getManualMeasureField(mmIssue, "Functional Area", Audit.FUNCTIONAL_AREA_FIELD))
+        List<Issue> wpIssues = asIssueList(getManualMeasureField(mmIssue, "Workplaces", Audit.WORKPLACES_FIELD))
 
         String auditLevel = (myBaseUtil.getCustomFieldValueById(mmIssue, AuditPreparation.AUDIT_LEVEL_FIELD.id) ?: "") as String
 
@@ -175,16 +382,22 @@ class ManualMeasure {
         String secondaryValue = isL4orL5 ? subArea : faKey
         String usage = buildManualMeasureUsage(pcIssue, faIssue, pcKey, faKey, subArea, auditLevel)
 
+        String wpcText = wpIssues
+                ? wpIssues.collect { Issue wp -> "${wp.key} ${wp.summary}" }.join(", ")
+                : null
+
         return [
                 auditLevel    : auditLevel,
                 pcIssue       : pcIssue,
                 faIssue       : faIssue,
+                wpIssues      : wpIssues,
                 pcKey         : pcKey,
                 faKey         : faKey,
                 subArea       : subArea,
                 secondaryLabel: secondaryLabel,
                 secondaryValue: secondaryValue,
-                usage         : usage
+                usage         : usage,
+                wpcText       : wpcText
         ]
     }
 
@@ -203,7 +416,9 @@ class ManualMeasure {
         String levelToken = auditLevel.trim().replace(' ', '_')
 
         if (auditLevel in [CustomFieldsConstants.AUDIT_LEVEL_4, CustomFieldsConstants.AUDIT_LEVEL_5]) {
-            return subArea ? "${pcKey}_${subArea}_${levelToken}" : "${pcKey}_${levelToken}"
+            return subArea
+                    ? "${pcKey}_${subArea}_${levelToken}"
+                    : "${pcKey}_${levelToken}"
         }
 
         return new CommonHelper().buildQuestionUsage(pcIssue, faIssue, auditLevel)
@@ -214,43 +429,56 @@ class ManualMeasure {
 
         boolean isLevel5 = (ctx.auditLevel == CustomFieldsConstants.AUDIT_LEVEL_5)
 
-        // Plain Description: L5 leaves out FA / secondary line entirely (consistent with scheduled L5 audits).
         List<String> descLines = []
-        if (mmIssue.description) descLines << (mmIssue.description as String)
+        if (mmIssue.description) {
+            descLines << (mmIssue.description as String)
+        }
+
         descLines << "PC= ${ctx.pcKey ?: "-"}"
-        if (!isLevel5) descLines << "${ctx.secondaryLabel}= ${ctx.secondaryValue ?: "-"}"
+
+        if (!isLevel5) {
+            descLines << "${ctx.secondaryLabel}= ${ctx.secondaryValue ?: "-"}"
+        }
+
+        if (ctx.wpcText) {
+            descLines << "WPC= ${ctx.wpcText}"
+        } else {
+            descLines << "WPC= -"
+        }
+
         descLines << "Usage= ${ctx.usage ?: "-"}"
         descLines << "Audit Level= ${ctx.auditLevel ?: "-"}"
-        String issueDescription = descLines.join("\n").trim()
 
-        mutable.setDescription(issueDescription)
+        mutable.setDescription(descLines.join("\n").trim())
 
         def auditDescriptionCf = CustomFieldsConstants.getCustomFieldByName("Audit Description")
         if (auditDescriptionCf) {
             List<String> auditLines = []
+
             auditLines << "{*}PC={*}${ctx.pcKey ?: "-"}"
+
             if (isLevel5) {
-                // L5: FA key stays empty; KVS PC Sub-Area is exposed as a separate Sub-Area line.
                 auditLines << "{*}FA={*}"
-                auditLines << "{*}WPC={*}-"
+                auditLines << "{*}WPC={*}${ctx.wpcText ?: "-"}"
                 auditLines << "{*}Audit Level={*}${ctx.auditLevel ?: "-"}"
                 auditLines << (ctx.secondaryValue ? "{*}Sub-Area={*} ${ctx.secondaryValue}" : "{*}Sub-Area={*}")
             } else {
                 auditLines << "{*}${ctx.secondaryLabel}={*}${ctx.secondaryValue ?: "-"}"
-                auditLines << "{*}WPC={*}-"
+                auditLines << "{*}WPC={*}${ctx.wpcText ?: "-"}"
                 auditLines << "{*}Audit Level={*}${ctx.auditLevel ?: "-"}"
             }
-            String auditDescriptionText = auditLines.join("\n").trim()
 
-            mutable.setCustomFieldValue(auditDescriptionCf, auditDescriptionText)
+            mutable.setCustomFieldValue(auditDescriptionCf, auditLines.join("\n").trim())
         }
 
-        issueManager.updateIssue(loggedInUser, mutable, EventDispatchOption.DO_NOT_DISPATCH, false)
+        issueManager.updateIssue(actor(), mutable, EventDispatchOption.DO_NOT_DISPATCH, false)
+
+        logger.setInfoMessage("ManualMeasure Audit texts updated on ${createdAudit.key}")
     }
 
     private Issue getSingleSelectedQuestion(Issue mmIssue) {
-        def raw = myBaseUtil.getCustomFieldValue(mmIssue, "Questions")
-        List<Issue> selected = (raw instanceof List) ? raw as List<Issue> : []
+        def raw = getFirstNonEmptyCustomFieldValueByName(mmIssue, "Questions")
+        List<Issue> selected = asIssueList(raw)
 
         if (!selected || selected.isEmpty()) {
             return null
@@ -259,57 +487,15 @@ class ManualMeasure {
         if (selected.size() > 1) {
             String comment = "More than one Question was selected. Only the first Question '${selected.first().key}' was used. The remaining Questions were ignored."
 
-            // add comment to Manual Measure issue
             ComponentAccessor.commentManager.create(
                     mmIssue,
-                    loggedInUser,
+                    actor(),
                     comment,
                     false
             )
         }
 
         return selected.first()
-    }
-
-    private String toUsername(def value) {
-        if (value == null) {
-            return null
-        }
-
-        if (value instanceof ApplicationUser) {
-            return value.username ?: value.name
-        }
-
-        // try by key first
-        if (value.hasProperty('key') && value.key) {
-            def byKey = ComponentAccessor.userManager.getUserByKey(value.key as String)
-            if (byKey) {
-                return byKey.username ?: byKey.name
-            }
-        }
-
-        // try by name
-        if (value.hasProperty('name') && value.name) {
-            def byName = ComponentAccessor.userManager.getUserByName(value.name as String)
-            if (byName) {
-                return byName.username ?: byName.name
-            }
-        }
-
-        // plain string fallback
-        String raw = value.toString()
-        def byKeyRaw = ComponentAccessor.userManager.getUserByKey(raw)
-        if (byKeyRaw) {
-            return byKeyRaw.username ?: byKeyRaw.name
-        }
-
-        def byNameRaw = ComponentAccessor.userManager.getUserByName(raw)
-        if (byNameRaw) {
-            return byNameRaw.username ?: byNameRaw.name
-        }
-
-        logger.setWarnMessage("User '${raw}' could not be resolved for transition field.")
-        return null
     }
 
     private void transitionQuestionToNok(Issue questionIssue, Issue mmIssue) {
@@ -325,12 +511,17 @@ class ManualMeasure {
         }
 
         def validation = issueService.validateTransition(
-                loggedInUser, questionIssue.id, QUESTION_SET_NOK_TRANSITION_ID, params)
+                actor(),
+                questionIssue.id,
+                QUESTION_SET_NOK_TRANSITION_ID,
+                params
+        )
+
         if (!validation.valid) {
             throw new IllegalStateException("SET NOK validate failed: ${validation.errorCollection}")
         }
 
-        def result = issueService.transition(loggedInUser, validation)
+        def result = issueService.transition(actor(), validation)
         if (!result.valid) {
             throw new IllegalStateException("SET NOK transition failed: ${result.errorCollection}")
         }
@@ -339,19 +530,19 @@ class ManualMeasure {
     private void copyFieldFromMmToTransition(Issue mmIssue, def params, String fieldName) {
         def cf = CustomFieldUtil.getCustomFieldByName(fieldName)
         if (!cf) {
+            logger.setWarnMessage("Transition field not found: ${fieldName}")
             return
         }
 
-        def value = myBaseUtil.getCustomFieldValue(mmIssue, fieldName)
-        if (value == null) {
+        def value = getFirstNonEmptyCustomFieldValueByName(mmIssue, fieldName)
+        if (!hasValue(value)) {
             return
         }
 
-        // user picker / multi user picker
         if (fieldName == Question.PERSON_RESPONSIBILITY_FIELD_NAME) {
-            if (value instanceof List) {
+            if (value instanceof Collection) {
                 String[] usernames = value.collect { toUsername(it) }.findAll { it } as String[]
-                if (usernames) {
+                if (usernames && usernames.length > 0) {
                     params.addCustomFieldValue(cf.id, usernames)
                 }
             } else {
@@ -363,10 +554,9 @@ class ManualMeasure {
             return
         }
 
-        // default branch for other fields
-        if (value instanceof List) {
+        if (value instanceof Collection) {
             String[] arr = value.collect { stringifyForParams(it) }.findAll { it } as String[]
-            if (arr) {
+            if (arr && arr.length > 0) {
                 params.addCustomFieldValue(cf.id, arr)
             }
         } else {
@@ -377,17 +567,68 @@ class ManualMeasure {
         }
     }
 
-    private String stringifyForParams(def value) {
-        if (value == null) return null
+    private String toUsername(def value) {
+        if (value == null) {
+            return null
+        }
 
         if (value instanceof ApplicationUser) {
             return value.username ?: value.name
         }
 
-        if (value.hasProperty('key') && value.key) return value.key as String
-        if (value.hasProperty('name') && value.name) return value.name as String
+        if (value.hasProperty('key') && value.key) {
+            def byKey = ComponentAccessor.userManager.getUserByKey(value.key as String)
+            if (byKey) {
+                return byKey.username ?: byKey.name
+            }
+        }
 
-        return value.toString()
+        if (value.hasProperty('name') && value.name) {
+            def byName = ComponentAccessor.userManager.getUserByName(value.name as String)
+            if (byName) {
+                return byName.username ?: byName.name
+            }
+        }
+
+        String raw = value.toString()
+
+        def byKeyRaw = ComponentAccessor.userManager.getUserByKey(raw)
+        if (byKeyRaw) {
+            return byKeyRaw.username ?: byKeyRaw.name
+        }
+
+        def byNameRaw = ComponentAccessor.userManager.getUserByName(raw)
+        if (byNameRaw) {
+            return byNameRaw.username ?: byNameRaw.name
+        }
+
+        logger.setWarnMessage("User '${raw}' could not be resolved for transition field.")
+        return null
+    }
+
+    private String stringifyForParams(def value) {
+        if (value == null) {
+            return null
+        }
+
+        if (value instanceof Issue) {
+            return value.key
+        }
+
+        if (value instanceof ApplicationUser) {
+            return value.username ?: value.name
+        }
+
+        if (value.hasProperty('key') && value.key) {
+            return value.key as String
+        }
+
+        if (value.hasProperty('name') && value.name) {
+            return value.name as String
+        }
+
+        String s = value.toString()
+        return s?.trim() ? s.trim() : null
     }
 
     private String getLastCommentBody(Issue mmIssue) {
@@ -420,7 +661,7 @@ class ManualMeasure {
                 destination.id,
                 linkTypeId,
                 0,
-                loggedInUser
+                actor()
         )
     }
 
@@ -433,10 +674,10 @@ class ManualMeasure {
             - Audit: ${auditIssue.key}
             - Question: ${questionIssue.key}
             - Measure: ${measureIssue.key}
-            """
+            """.trim()
 
-        mutable.setDescription(oldDesc + "\n" + appendix)
-        issueManager.updateIssue(loggedInUser, mutable, EventDispatchOption.DO_NOT_DISPATCH, false)
+        mutable.setDescription(oldDesc + "\n\n" + appendix)
+        issueManager.updateIssue(actor(), mutable, EventDispatchOption.DO_NOT_DISPATCH, false)
     }
 
     private void rollback(List<String> keys) {
@@ -445,87 +686,12 @@ class ManualMeasure {
 
     private String getIssueTypeIdByName(String issueTypeName) {
         def type = ComponentAccessor.constantsManager.allIssueTypeObjects.find { it.name == issueTypeName }
+
         if (!type) {
             throw new IllegalStateException("Issue type not found: ${issueTypeName}")
         }
+
         return type.id
-    }
-
-    private void copyAuditFields(Issue mmIssue, IssueInputParametersImpl params) {
-        def pc = myBaseUtil.getCustomFieldValue(mmIssue, Audit.PROFIT_CENTER_FIELD.id)
-        def fa = myBaseUtil.getCustomFieldValue(mmIssue, Audit.FUNCTIONAL_AREA_FIELD.id)
-        def wpc = myBaseUtil.getCustomFieldValue(mmIssue, Audit.WORKPLACES_FIELD.id)
-        def questions = myBaseUtil.getCustomFieldValue(mmIssue, Audit.QUESTIONS_FIELD.id)
-
-        def auditLevelValue = myBaseUtil.getCustomFieldValueById(mmIssue, AuditPreparation.AUDIT_LEVEL_FIELD.id)
-        def auditLevelOptionId = auditLevelValue
-                ? customFieldUtil.getOptionIdByValue(AuditPreparation.AUDIT_LEVEL_FIELD_NAME, auditLevelValue.toString())
-                : null
-
-        def auditTypeOptionId = customFieldUtil.getOptionIdByValue(Audit.AUDIT_TYPE_FIELD_NAME, Audit.MANUAL)
-
-        def targetStartCf = CustomFieldsConstants.getCustomFieldByName(AuditPreparation.TARGET_START_FIELD_NAME)
-        def targetStartRaw = targetStartCf ? myBaseUtil.getCustomFieldValueById(mmIssue, targetStartCf.id) : null
-        String targetStartValue = toDatePickerValue(targetStartRaw)
-
-        if (pc) {
-            params.addCustomFieldValue(Audit.PROFIT_CENTER_FIELD.id, pc.toString())
-        }
-
-        if (fa) {
-            params.addCustomFieldValue(
-                    Audit.FUNCTIONAL_AREA_FIELD.id,
-                    (fa instanceof List ? fa*.key : [fa.key]) as String[]
-            )
-        }
-
-        if (wpc) {
-            params.addCustomFieldValue(
-                    Audit.WORKPLACES_FIELD.id,
-                    (wpc instanceof List ? wpc*.key : []) as String[]
-            )
-        }
-
-        if (questions) {
-            params.addCustomFieldValue(
-                    Audit.QUESTIONS_FIELD.id,
-                    (questions instanceof List ? questions*.key : []) as String[]
-            )
-        }
-
-        if (auditLevelOptionId) {
-            params.addCustomFieldValue(
-                    AuditPreparation.AUDIT_LEVEL_FIELD.id,
-                    auditLevelOptionId.toString()
-            )
-        }
-
-        if (!targetStartCf) {
-            throw new IllegalStateException("Custom field not found: ${AuditPreparation.TARGET_START_FIELD_NAME}")
-        }
-
-        if (!targetStartValue) {
-            throw new IllegalStateException("Target start is empty on Manual Measure.")
-        }
-
-        params.addCustomFieldValue(
-                targetStartCf.id,
-                [targetStartValue] as String[]
-        )
-
-        if (!auditTypeOptionId) {
-            throw new IllegalStateException("Audit Type option id not found for value: ${Audit.MANUAL}")
-        }
-
-        params.addCustomFieldValue(
-                Audit.AUDIT_TYPE_FIELD.id,
-                auditTypeOptionId.toString()
-        )
-
-        params.addCustomFieldValue(
-                CustomFieldsConstants.PARENT_LINK_FIELD_ID,
-                mmIssue.key
-        )
     }
 
     private String toDatePickerValue(def raw) {
@@ -553,5 +719,9 @@ class ManualMeasure {
         }
 
         return raw.toString()
+    }
+
+    private ApplicationUser actor() {
+        return loggedInUser ?: runAs
     }
 }

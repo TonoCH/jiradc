@@ -1,24 +1,12 @@
 package listeners.global_area.projectInformation
 
-/**
- * projectInformationHandler
- *
- * @author chabrecek.anton
- * Created on 3. 7. 2026.
- */
 import com.atlassian.jira.event.issue.IssueEvent
 
-def issueEvent = event as IssueEvent
-def handler = new ProjectInformationHandler()
+/**
+ * projectInformationListener
+ *
+ * @author chabrecek.anton
+ * Created on 24. 8. 2026.
+ */
 
-if (!handler.isProjectInformationChanged(issueEvent)) {
-    return
-}
-
-try {
-    handler.handleProjectInformationChange(issueEvent.issue, issueEvent.user)
-} catch (Exception e) {
-    handler.logFailure(issueEvent.issue, e)
-    handler.sendFailureMail(issueEvent.issue, e)
-    throw e
-}
+new ProjectInformationHierarchyListener().handle(event as IssueEvent)

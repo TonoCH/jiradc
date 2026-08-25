@@ -61,7 +61,7 @@ public class Audit extends BaseIssue{
         super(issue)
     }
 
-    public def prepareAuditParams(AuditPreparation auditPreparationIssue, def profitCenterKey, def functionalAreaKey) {
+    public def prepareAuditParams(def auditPreparationIssue, def profitCenterKey, def functionalAreaKey) {
         def auditParams = new IssueInputParametersImpl();
 
         /*def targetEndDate = null
