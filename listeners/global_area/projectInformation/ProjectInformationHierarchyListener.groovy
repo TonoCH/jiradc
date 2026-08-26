@@ -1,4 +1,4 @@
-package listeners.global_area.projectInformation
+package listeners.global_area.prjinf
 
 import com.atlassian.jira.bc.issue.search.SearchService
 import com.atlassian.jira.component.ComponentAccessor
@@ -53,6 +53,10 @@ class ProjectInformationHierarchyListener {
     private final Set<Long> resolvedParents = [] as Set<Long>
 
     void handle(IssueEvent event) {
+
+        log.warn("PI listener received event: issue=${eventIssue.key}, " +
+                "eventTypeId=${event.eventTypeId}, " + "eventClass=${event.class.name}, " + "changeLogId=${event.changeLog?.id}")
+
         Issue eventIssue = event?.issue
         if (!eventIssue) {
             return
@@ -65,6 +69,8 @@ class ProjectInformationHierarchyListener {
         }
 
         Set<String> changedFields = getChangedFieldTokens(event)
+        log.warn("PI listener changed fields for ${eventIssue.key}: ${changedFields}")
+
         boolean newFieldChanged = fieldChanged(changedFields, cfProjectInformation)
         boolean oldFieldChanged = ENABLE_OLD_PROJECT_INFORMATION_SYNC &&
                 fieldChanged(changedFields, cfOldProjectInformation)
@@ -128,7 +134,7 @@ class ProjectInformationHierarchyListener {
         String requested = requestedValue?.trim() ?: ""
 
         if (isInitiative(source)) {
-            return [value: requested, overrideKey: "", sourceKey: requested ? source.key : ""]
+            return [value: requested, overrideKey: source.key, sourceKey: requested ? source.key : ""]
         }
 
         Issue parent = getParent(source)
@@ -332,7 +338,8 @@ class ProjectInformationHierarchyListener {
                 synchronizeOldProjectInformation(issue, target, changeHolder)
             }
 
-            indexingService.reIndex(issue)
+            //due to performace disabled
+            //indexingService.reIndex(issue)
             log.debug("${issue.key}: synchronized value='${target}', override='${targetOverride}', oldSync=${ENABLE_OLD_PROJECT_INFORMATION_SYNC}")
             return "UPDATED"
         } catch (Exception e) {
