@@ -944,6 +944,7 @@ AJS.toInit(function () {
       mondayDate: 'Montag (Datum)', dayFilter: 'Wochentag-Filter',
       questionUsage: 'Filter nach Question Usage',
       responsiblePerson: 'Verantwortlich',
+      days: { Mon: 'Mo', Tue: 'Di', Wed: 'Mi', Thu: 'Do', Fri: 'Fr' },
       hint: 'Jede Frage mit "i.O. → ✓" oder "n.i.O. → X" bewerten. Falls die Frage nicht beantwortet werden kann, "" verwenden.'
     },
     EN: {
@@ -954,6 +955,7 @@ AJS.toInit(function () {
       mondayDate: 'Monday date', dayFilter: 'Weekday filter',
       questionUsage: 'Filter by Question Usage',
       responsiblePerson: 'Responsible person',
+      days: { Mon: 'Mo', Tue: 'Tu', Wed: 'We', Thu: 'Th', Fri: 'Fr' },
       hint: 'Evaluate each question with "i.O. → ✓" or "n.i.O. → X". In case the question can’t be answered use "".'
     },
     SK: {
@@ -964,10 +966,12 @@ AJS.toInit(function () {
       mondayDate: 'Pondelok (dátum)', dayFilter: 'Filter dňa',
       questionUsage: 'Filter podľa Question Usage',
       responsiblePerson: 'Zodpovedná osoba',
+      days: { Mon: 'Po', Tue: 'Ut', Wed: 'St', Thu: 'Št', Fri: 'Pi' },
       hint: 'Každú otázku vyhodnoťte ako "i.O. → ✓" alebo "n.i.O. → X". Ak otázku nie je možné zodpovedať, použite "".'
     }
   };
   function l1T(lang) { return L1_I18N[lang] || L1_I18N.DE; }
+  function l1DayLabel(t, key) { return (t.days && t.days[key]) || key; }
 
   function l1Api(params) {
     var qs = Object.keys(params).map(function (k) {
@@ -992,12 +996,278 @@ AJS.toInit(function () {
     return 1 + Math.round(((d - y1) / 86400000 - 3 + ((y1.getDay() + 6) % 7)) / 7);
   }
 
+  // Local calendar date as YYYY-MM-DD. toISOString() converts to UTC first,
+  // which in any positive offset rolls the date back one day - that shifted
+  // every generated calendar week by one and made the CW column headers
+  // disagree with the "Kalenderwoche" line in the report header.
+  function l1LocalDate(d) {
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+  }
+
   function l1CurrentMonday() {
     var d = new Date();
     var dow = d.getDay();
     var diff = (dow === 0 ? -6 : 1) - dow;
     d.setDate(d.getDate() + diff);
-    return d.toISOString().slice(0, 10);
+    return l1LocalDate(d);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ══  Level 1 Checklist: print geometry engine
+  // ══
+  // ══  The checklist is assembled dynamically — the number of workplaces,
+  // ══  the number of visible days (1 or 5), the number of questions and
+  // ══  the length of every question text all change per PC/FA. So nothing
+  // ══  here is a fixed number tuned for one report: the engine derives the
+  // ══  column widths from the paper, then MEASURES the real, fully built
+  // ══  table off-screen at the exact printable width and searches for the
+  // ══  largest font / tallest rows that still fit the minimum page count.
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Physical paper, in mm, already in the printed orientation.
+  var L1_PAPER = {
+    'A4-landscape': { w: 297, h: 210 },
+    'A3-landscape': { w: 420, h: 297 },
+    'A3-portrait':  { w: 297, h: 420 }
+  };
+
+  // Row density presets. `min` is the floor the rows start from, `max` is how
+  // far auto-fit may stretch them to reach the bottom of the last page.
+  var L1_DENSITY = {
+    compact: { min: 4.6, max: 8,  padV: 0.7 },
+    normal:  { min: 5.2, max: 13, padV: 0.95 },
+    comfort: { min: 6.5, max: 20, padV: 1.4 }
+  };
+
+  var L1_FONT_MIN = 6.5;   // absolute floor, only used to squeeze page count
+  var L1_FONT_READ = 8.5;  // readability floor — the size auto-fit refuses to
+                           // go below just to save a sheet of paper
+  var L1_FONT_MAX = 13;
+
+  // A question column narrower than this is not usable for reading.
+  var L1_TEXT_USABLE = 35;
+
+  var _l1MmProbe = null;
+
+  // CSS mm and CSS pt are absolute units in both media, so a probe measured
+  // on screen converts print millimetres just as well.
+  function l1PxPerMm() {
+    if (!_l1MmProbe || !_l1MmProbe.parentNode) {
+      _l1MmProbe = document.createElement('div');
+      _l1MmProbe.style.cssText =
+        'position:absolute;left:-30000px;top:0;width:100mm;height:0;visibility:hidden;';
+      document.body.appendChild(_l1MmProbe);
+    }
+    var w = _l1MmProbe.getBoundingClientRect().width / 100;
+    return w > 0 ? w : 96 / 25.4;
+  }
+
+  function l1Clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+  /**
+   * Column widths for one candidate font size.
+   *
+   * Order of claims on the printable width:
+   *   1. ID and Standard scale with the font (they hold short, fixed strings).
+   *   2. Every check column gets at least enough room for a two-letter day
+   *      label at that font size — that is what stops "Mo" from being broken
+   *      into three stacked characters and inflating the table header.
+   *   3. The question column is capped, so long questions wrap over 2-3 lines
+   *      the way the original Excel sheet did, instead of stretching into one
+   *      thin line across a wide A3.
+   *   4. Whatever is still left goes back to the check columns (up to a sane
+   *      cap) and only then back to the question column.
+   *
+   * Works for 1 check column and for 50 — with many columns the check block
+   * simply squeezes down to its font-derived minimum and the question column
+   * takes the hit, which is the only thing that can give.
+   */
+  function l1ColumnWidths(printableW, nCheck, fontPt, textPref) {
+    var idW  = l1Clamp(fontPt * 1.05, 7.5, 14);
+    // Wide enough for the longest standard name ("Materialbereitstellung") at
+    // the reduced size the .l1-std-cell rule renders it in.
+    var stdW = l1Clamp(fontPt * 3.70, 20, 46);
+
+    // A two-letter bold label plus cell padding, in mm.
+    var checkMin = l1Clamp(fontPt * 0.3528 * 1.25 + 0.9, 4.2, 12);
+    var checkMax = Math.max(checkMin, l1Clamp(fontPt * 1.15, 7, 14));
+
+    var avail = printableW - idW - stdW;
+    if (avail < 20) {                       // pathological: shrink the fixed pair
+      var over = 20 - avail;
+      stdW = Math.max(14, stdW - over);
+      avail = printableW - idW - stdW;
+    }
+
+    // Start with the check block at its minimum, question column gets the rest.
+    var checkW = checkMin;
+    var textW  = avail - nCheck * checkW;
+
+    if (textW < 25) {
+      // Not enough width for a usable question column — take it out of the
+      // check columns down to an absolute floor, then accept the overflow.
+      var need = 25 - textW;
+      checkW = Math.max(3.6, checkW - need / Math.max(1, nCheck));
+      textW  = avail - nCheck * checkW;
+    }
+
+    // Cap the question column so questions wrap instead of running as one line.
+    var textCap;
+    if (textPref === 0)        textCap = Infinity;                 // "as wide as possible"
+    else if (textPref > 0)     textCap = textPref;                 // explicit mm
+    else                       textCap = l1Clamp(printableW * 0.42, 70, 190); // auto
+
+    if (textW > textCap) {
+      var surplus = textW - textCap;
+      textW = textCap;
+      if (nCheck > 0) {
+        checkW = Math.min(checkMax, checkW + surplus / nCheck);
+        textW  = avail - nCheck * checkW;   // any remainder after the cap
+      } else {
+        textW = avail;
+      }
+    }
+
+    textW = Math.max(18, textW);
+
+    return {
+      id: idW, std: stdW, check: checkW, text: textW,
+      // Enough width left for a readable question column at this font?
+      fits: (idW + stdW + nCheck * checkW + L1_TEXT_USABLE) <= printableW + 0.5,
+      usable: textW >= L1_TEXT_USABLE
+    };
+  }
+
+  function l1Metrics(fontPt, cols, density, rowMin) {
+    var d = L1_DENSITY[density] || L1_DENSITY.normal;
+    return {
+      font:    fontPt,
+      cols:    cols,
+      density: density,
+      rowMin:  rowMin,
+      padV:    d.padV,
+      padH:    l1Clamp(fontPt * 0.13, 0.7, 1.6),
+      hdrFont: l1Clamp(fontPt * 0.96, 6.5, 11)
+    };
+  }
+
+  function l1ApplyMetrics(el, m, pageW) {
+    var s = el.style;
+    s.setProperty('--l1-page-w',    pageW ? (pageW + 'mm') : '100%');
+    s.setProperty('--l1-font',      m.font.toFixed(2) + 'pt');
+    s.setProperty('--l1-pad-v',     m.padV.toFixed(2) + 'mm');
+    s.setProperty('--l1-pad-h',     m.padH.toFixed(2) + 'mm');
+    s.setProperty('--l1-row-min',   m.rowMin.toFixed(2) + 'mm');
+    s.setProperty('--l1-col-id',    m.cols.id.toFixed(2) + 'mm');
+    s.setProperty('--l1-col-std',   m.cols.std.toFixed(2) + 'mm');
+    s.setProperty('--l1-col-text',  m.cols.text.toFixed(2) + 'mm');
+    s.setProperty('--l1-col-check', m.cols.check.toFixed(2) + 'mm');
+    s.setProperty('--l1-hdr-font',  m.hdrFont.toFixed(2) + 'pt');
+  }
+
+  /**
+   * Lay the real report out off-screen at the exact printable width and read
+   * back every height that pagination depends on. Returns millimetres.
+   */
+  function l1MeasureLayout(sourcePage, m, pageW) {
+    var pxmm = l1PxPerMm();
+    var probe = document.createElement('div');
+    probe.className = 'l1-page l1-measure';
+    l1ApplyMetrics(probe, m, pageW);
+
+    var kids = sourcePage.children;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].id === 'l1-stateMsg') continue;
+      var c = kids[i].cloneNode(true);
+      c.removeAttribute('id');
+      var withId = c.querySelectorAll ? c.querySelectorAll('[id]') : [];
+      for (var j = 0; j < withId.length; j++) withId[j].removeAttribute('id');
+      probe.appendChild(c);
+    }
+
+    document.body.appendChild(probe);
+
+    var res = null;
+    try {
+      var tbl = probe.querySelector('.l1-table');
+      if (!tbl) return null;
+
+      var thead = tbl.querySelector('thead');
+      var rows  = tbl.querySelectorAll('tbody tr');
+
+      // offsetTop of the table inside the absolutely positioned probe folds in
+      // the report header, the hint and every margin between them.
+      var preTable = tbl.offsetTop / pxmm;
+      var theadH   = (thead ? thead.getBoundingClientRect().height : 0) / pxmm;
+
+      var rowH = [];
+      for (var r = 0; r < rows.length; r++) {
+        rowH.push(rows[r].getBoundingClientRect().height / pxmm);
+      }
+
+      // Everything after the table — the footer plus the gap above it. Taken
+      // from the table's bottom edge so the footer's own top margin is
+      // included; leaving it out was enough to push the footer onto a sheet
+      // of its own.
+      var footerH = Math.max(0,
+        (probe.offsetHeight - (tbl.offsetTop + tbl.offsetHeight)) / pxmm);
+
+      res = {
+        preTable: preTable,
+        thead:    theadH,
+        rows:     rowH,
+        footer:   footerH,
+        natural:  rowH.length ? Math.min.apply(null, rowH) : 0,
+        tableW:   tbl.getBoundingClientRect().width / pxmm
+      };
+    } finally {
+      if (probe.parentNode) probe.parentNode.removeChild(probe);
+    }
+    return res;
+  }
+
+  /**
+   * Simulate pagination for a given minimum row height. Rows carry
+   * `break-inside: avoid`, so the browser packs them exactly like this greedy
+   * walk does — no row is ever split. Pure arithmetic, so the row-height
+   * search below costs nothing.
+   */
+  // Sub-millimetre rounding differences between the measured layout and the
+  // printer's own layout pass can spill one row onto an extra sheet.
+  //  - a flat hold-back for the page itself, and
+  //  - a per-row allowance, because that rounding accumulates: a 31-row
+  //    checklist drifted far enough to push its footer onto a third sheet.
+  var L1_PAGE_SAFETY = 1.5;
+  var L1_ROW_SAFETY  = 0.10;
+
+  function l1PackPages(meas, pageH, rowMin) {
+    pageH -= L1_PAGE_SAFETY;
+    // The footer is reserved on every sheet rather than only checked at the
+    // end. Costs ~4 mm a page and removes the failure mode where everything
+    // fits but the footer alone lands on a sheet of its own.
+    var availFirst = pageH - meas.preTable - meas.thead - meas.footer;
+    var availRest  = pageH - meas.thead - meas.footer;
+    if (availFirst < 5 || availRest < 5) return { pages: 999, remain: 0, avail: 1 };
+
+    var pages = 1, y = availFirst, avail = availFirst;
+    for (var i = 0; i < meas.rows.length; i++) {
+      var h = Math.max(meas.rows[i], rowMin) + L1_ROW_SAFETY;
+      if (h > y + 0.01) { pages++; y = availRest; avail = availRest; }
+      y -= h;
+    }
+
+    return { pages: pages, remain: Math.max(0, y), avail: avail };
+  }
+
+  /** Largest row height that still keeps the report inside `targetPages`. */
+  function l1FitRowHeight(meas, pageH, targetPages, lo, hi) {
+    if (l1PackPages(meas, pageH, hi).pages <= targetPages) return hi;
+    for (var it = 0; it < 24; it++) {
+      var mid = (lo + hi) / 2;
+      if (l1PackPages(meas, pageH, mid).pages <= targetPages) lo = mid; else hi = mid;
+    }
+    return lo;
   }
 
   // ── Level 1 Checklist: init ──
@@ -1019,18 +1289,34 @@ AJS.toInit(function () {
     var reportFooter = document.getElementById('l1-reportFooter');
     var hintBox     = document.getElementById('l1-hint');
 
+    // Print layout knobs
+    var selFit      = document.getElementById('l1-selFit');
+    var selFont     = document.getElementById('l1-selFont');
+    var selDensity  = document.getElementById('l1-selDensity');
+    var selMargin   = document.getElementById('l1-selMargin');
+    var selTextW    = document.getElementById('l1-selTextW');
+    var fitInfo     = document.getElementById('l1-fitInfo');
+    var pageEl      = document.querySelector('.l1-page');
+
     if (!selPC || !selFA) {
       console.error("Level1 checklist DOM elements not found");
       return;
     }
 
     var lastChecklistData = null; // cached data to avoid re-fetch on day filter change
+    var lastCheckCols     = 0;    // workplaces x visible days of the current render
 
     if (selPaper) {
       selPaper.addEventListener('change', function () {
         l1ApplyPaperClass();
+        l1FitPrint();
       });
     }
+
+    // Any layout knob only re-fits — the data and the markup stay untouched.
+    [selFit, selFont, selDensity, selMargin, selTextW].forEach(function (sel) {
+      if (sel) sel.addEventListener('change', function () { l1FitPrint(); });
+    });
 
     l1ApplyPaperClass();
 
@@ -1092,7 +1378,7 @@ AJS.toInit(function () {
 
     btnLoad.addEventListener('click', l1LoadChecklist);
 
-    // Set the @page rule from the Paper/Orientation selector, then print.
+    // Set the @page rule from the Paper/Orientation + margin selectors.
     function l1ApplyPageStyle() {
       var val = (selPaper && selPaper.value) || 'A4-landscape';
       var parts = val.split('-');              // e.g. ["A3","portrait"]
@@ -1101,20 +1387,151 @@ AJS.toInit(function () {
       var st = document.getElementById('l1-page-style');
       if (st) {
         st.textContent =
-          '@media print { @page { size: ' + size + ' ' + orient + '; margin: 6mm; } }';
+          '@media print { @page { size: ' + size + ' ' + orient
+          + '; margin: ' + l1Margin() + 'mm; } }';
       }
+    }
+
+    function l1Margin() {
+      var v = selMargin ? parseFloat(selMargin.value) : 6;
+      return isNaN(v) ? 6 : v;
+    }
+
+    function l1PageBox() {
+      var paper = L1_PAPER[(selPaper && selPaper.value) || 'A4-landscape']
+        || L1_PAPER['A4-landscape'];
+      var m = l1Margin();
+      return { w: paper.w - 2 * m, h: paper.h - 2 * m };
+    }
+
+    /**
+     * Decide the print geometry for whatever is currently rendered.
+     *
+     * 1. Column widths follow from paper + check-column count + font.
+     * 2. Font: the smallest allowed size tells us the minimum number of sheets
+     *    the report can possibly occupy. Then binary-search the LARGEST font
+     *    that still fits that sheet count — bigger text for free.
+     * 3. Row height: with the font fixed, stretch the rows until the last
+     *    sheet is full. This is what removes the "one lonely row on page 2"
+     *    and what makes the grid reach the bottom edge like the Excel sheet.
+     *
+     * Everything is measured on the actual DOM, so a 1-workplace/1-day report
+     * and a 10-workplace/5-day report are handled by the same code path.
+     */
+    function l1FitPrint() {
+      if (!pageEl) return;
+      var tbl = pageEl.querySelector('.l1-table');
+      if (!tbl) { if (fitInfo) fitInfo.textContent = ''; return; }
+
+      var box     = l1PageBox();
+      var mode    = selFit ? selFit.value : 'auto';
+      var density = selDensity ? selDensity.value : 'normal';
+      var dens    = L1_DENSITY[density] || L1_DENSITY.normal;
+      var nCheck  = lastCheckCols;
+
+      var textPref = -1;
+      if (selTextW && selTextW.value !== 'auto') {
+        var tp = parseFloat(selTextW.value);
+        textPref = isNaN(tp) ? -1 : tp;
+      }
+
+      function metricsFor(fontPt, rowMin) {
+        return l1Metrics(fontPt, l1ColumnWidths(box.w, nCheck, fontPt, textPref),
+                         density, rowMin);
+      }
+
+      var manualFont = (selFont && selFont.value !== 'auto')
+        ? parseFloat(selFont.value) : null;
+      if (manualFont !== null && isNaN(manualFont)) manualFont = null;
+
+      // ── Fixed mode: honour the knobs verbatim, no searching ──
+      if (mode === 'fixed') {
+        var fm = metricsFor(manualFont || 9, dens.min);
+        l1ApplyMetrics(pageEl, fm, box.w);
+        var fMeas = l1MeasureLayout(pageEl, fm, box.w);
+        l1ReportFit(fm, fMeas ? l1PackPages(fMeas, box.h, fm.rowMin) : null);
+        l1ApplyPageStyle();
+        return;
+      }
+
+      // ── Step 1: pick the floor the page count is derived from ──
+      //
+      // "auto"  starts from the readability floor: the report is allowed to
+      //         take one more sheet rather than shrink to 7 pt — which was the
+      //         original complaint about the printout.
+      // "dense" starts from the absolute floor: fewest sheets wins, text may
+      //         get small.
+      // "rows"  keeps the chosen (or default) size and only stretches rows.
+      var floorFont;
+      if (manualFont !== null)      floorFont = manualFont;
+      else if (mode === 'auto')     floorFont = L1_FONT_READ;
+      else if (mode === 'dense')    floorFont = L1_FONT_MIN;
+      else                          floorFont = 9;
+
+      // Too many check columns to keep a readable question column at that
+      // size? Then readability is not on offer — drop to the absolute floor.
+      if (manualFont === null && !l1ColumnWidths(box.w, nCheck, floorFont, textPref).fits) {
+        floorFont = L1_FONT_MIN;
+      }
+
+      var baseMeas = l1MeasureLayout(pageEl, metricsFor(floorFont, dens.min), box.w);
+      if (!baseMeas) return;
+
+      var targetPages = l1PackPages(baseMeas, box.h, dens.min).pages;
+
+      // ── Step 2: largest font that still fits that many sheets ──
+      var bestFont = floorFont;
+      var bestMeas = baseMeas;
+
+      if (manualFont === null && mode !== 'rows') {
+        var lo = floorFont, hi = L1_FONT_MAX;
+        var loMeas = baseMeas;
+        for (var it = 0; it < 7; it++) {
+          var mid = Math.round(((lo + hi) / 2) * 4) / 4;   // quarter-point steps
+          if (mid <= lo + 0.01 || mid >= hi - 0.01) break;
+          var mCand = metricsFor(mid, dens.min);
+          var sCand = mCand.cols.fits ? l1MeasureLayout(pageEl, mCand, box.w) : null;
+          if (sCand && sCand.tableW <= box.w + 0.6
+                    && l1PackPages(sCand, box.h, dens.min).pages <= targetPages) {
+            lo = mid; loMeas = sCand;
+          } else {
+            hi = mid;
+          }
+        }
+        bestFont = lo;
+        bestMeas = loMeas;
+      }
+
+      // ── Step 3: stretch the rows so the last sheet is full ──
+      var rowMin = l1FitRowHeight(bestMeas, box.h, targetPages, dens.min, dens.max);
+      var finalM = metricsFor(bestFont, rowMin);
+      l1ApplyMetrics(pageEl, finalM, box.w);
+
+      l1ReportFit(finalM, l1PackPages(bestMeas, box.h, rowMin));
+      l1ApplyPageStyle();
+    }
+
+    function l1ReportFit(m, pack) {
+      if (!fitInfo) return;
+      if (!pack) { fitInfo.textContent = ''; return; }
+      var fill = pack.avail > 0 ? (1 - pack.remain / pack.avail) : 1;
+      var warn = (m.cols.usable === false)
+        ? ' <span class="l1-fit-warn">— too many check columns for this sheet;'
+          + ' use A3 landscape or filter a single weekday</span>'
+        : '';
+      fitInfo.innerHTML =
+        '<b>' + pack.pages + '</b> page' + (pack.pages === 1 ? '' : 's')
+        + ' · ' + parseFloat(m.font.toFixed(2)) + ' pt'
+        + ' · row ' + m.rowMin.toFixed(1) + ' mm'
+        + ' · question col ' + Math.round(m.cols.text) + ' mm'
+        + ' · last page ' + Math.round(fill * 100) + '% full'
+        + warn;
     }
 
     btnPrint.addEventListener('click', function () {
       l1ApplyPaperClass();
-      l1ForcePrintSize();
-      l1ApplyPageStyle();
+      l1FitPrint();
       window.print();
-    });
-
-
-    window.addEventListener('afterprint', function () {
-      l1RestorePrintSize();
     });
 
 
@@ -1186,7 +1603,7 @@ AJS.toInit(function () {
         for (var wkI = 0; wkI < 5; wkI++) {
           var d = new Date(baseDate);
           d.setDate(d.getDate() + wkI * 7);
-          var cwNum = l1GetKW(d.toISOString().slice(0, 10));
+          var cwNum = l1GetKW(l1LocalDate(d));
           expanded.push({ name: 'CW ' + cwNum });
         }
         wp = expanded;
@@ -1221,16 +1638,12 @@ AJS.toInit(function () {
         curGrp.items.push(q);
       });
 
-      // Pick a size class based on check-column pressure. All actual widths
-      // and font sizes live in the CSS (.l1-size-xl/lg/md/sm rules).
+      // Column count drives every width decision downstream; l1FitPrint()
+      // reads it back after the markup is in the DOM.
       var totalCheckCols = wp.length * visDays.length;
-      var sizeCls;
-      if (totalCheckCols <= 5)        sizeCls = 'l1-size-xl';
-      else if (totalCheckCols <= 10)  sizeCls = 'l1-size-lg';
-      else if (totalCheckCols <= 20)  sizeCls = 'l1-size-md';
-      else                             sizeCls = 'l1-size-sm';
+      lastCheckCols = totalCheckCols;
 
-      var h = '<table class="l1-table ' + sizeCls + '">';
+      var h = '<table class="l1-table">';
 
       // <colgroup> classes are styled in CSS — JS only emits the markup.
       // l1-col-text has no width rule → absorbs leftover space.
@@ -1258,7 +1671,7 @@ AJS.toInit(function () {
       h += '<tr>';
       for (var wi = 0; wi < wp.length; wi++) {
         for (var di = 0; di < visDays.length; di++) {
-          h += '<th class="l1-col-check">' + visDays[di] + '</th>';
+          h += '<th class="l1-col-check">' + escapeHtml(l1DayLabel(t, visDays[di])) + '</th>';
         }
       }
       h += '</tr></thead>';
@@ -1312,6 +1725,9 @@ AJS.toInit(function () {
       reportFooter.style.display = 'flex';
       document.getElementById('l1-footerDate').textContent =
         'Generated: ' + new Date().toLocaleDateString('en-GB');
+
+      // Markup is in the DOM — now size it to the sheet.
+      l1FitPrint();
     }
 
     // ── Print header (visible only in @media print) ──
@@ -1329,8 +1745,16 @@ AJS.toInit(function () {
       if (weekModeWpName && dateStr) {
         var endDate = new Date(dateStr + 'T00:00:00');
         endDate.setDate(endDate.getDate() + 4 * 7);
-        var kwEnd = l1GetKW(endDate.toISOString().slice(0, 10));
+        var kwEnd = l1GetKW(l1LocalDate(endDate));
         kwTxt = 'CW ' + kw + ' – CW ' + kwEnd;
+      }
+
+      // Three rows instead of four/five: "KVS Stufe" and the usage filter share
+      // one line. Every millimetre saved up here is a millimetre the checklist
+      // rows get back on the sheet.
+      var lvlTxt = '1';
+      if (data.usageKey) {
+        lvlTxt += '   ·   ' + escapeHtml(t.questionUsage) + ': ' + escapeHtml(data.usageKey);
       }
 
       var h = '<table>';
@@ -1338,9 +1762,8 @@ AJS.toInit(function () {
       h += '<td class="l1-rh-label">' + escapeHtml(t.calendarWeek) + ':</td><td>' + escapeHtml(kwTxt) + '</td></tr>';
       h += '<tr><td class="l1-rh-label">' + escapeHtml(t.functionalArea) + ':</td><td>' + escapeHtml(faTxt) + '</td>';
       h += '<td class="l1-rh-label">' + escapeHtml(t.mondayDate) + ':</td><td>' + dateFmt + '</td></tr>';
-      h += '<tr><td class="l1-rh-label">' + escapeHtml(t.kvsLevel) + ':</td><td>1</td>';
+      h += '<tr><td class="l1-rh-label">' + escapeHtml(t.kvsLevel) + ':</td><td>' + lvlTxt + '</td>';
       h += '<td class="l1-rh-label">' + escapeHtml(t.dayFilter) + ':</td><td>' + escapeHtml(dayTxt) + '</td></tr>';
-      h += '<tr><td class="l1-rh-label">' + escapeHtml(t.questionUsage) + ':</td><td colspan="3">' + escapeHtml(data.usageKey) + '</td></tr>';
       if (weekModeWpName) {
         h += '<tr><td class="l1-rh-label">Workplace:</td><td colspan="3">' + escapeHtml(weekModeWpName) + '</td></tr>';
       }
@@ -1364,33 +1787,8 @@ AJS.toInit(function () {
       reportHeader.innerHTML = h;
     }
 
-    function l1ForcePrintSize() {
-        var tbl = document.querySelector('.l1-table');
-        if (!tbl) return;
-
-        var original =
-          tbl.classList.contains('l1-size-xl') ? 'l1-size-xl' :
-          tbl.classList.contains('l1-size-lg') ? 'l1-size-lg' :
-          tbl.classList.contains('l1-size-md') ? 'l1-size-md' :
-          tbl.classList.contains('l1-size-sm') ? 'l1-size-sm' : '';
-
-        tbl.setAttribute('data-orig-size', original);
-
-        tbl.classList.remove('l1-size-xl', 'l1-size-lg', 'l1-size-md', 'l1-size-sm');
-        tbl.classList.add('l1-size-md');
-    }
-
-    function l1RestorePrintSize() {
-        var tbl = document.querySelector('.l1-table');
-        if (!tbl) return;
-
-        var original = tbl.getAttribute('data-orig-size');
-        tbl.classList.remove('l1-size-xl', 'l1-size-lg', 'l1-size-md', 'l1-size-sm');
-        if (original) tbl.classList.add(original);
-    }
-
     function l1ApplyPaperClass() {
-        var page = document.querySelector('.l1-page');
+        var page = pageEl;
         if (!page) return;
 
         page.classList.remove(
