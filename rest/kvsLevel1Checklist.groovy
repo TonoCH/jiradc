@@ -144,7 +144,18 @@ private static String buildLevel1Html() {
     text-align: center; vertical-align: middle; line-height: var(--l1-lh);
 }
 
-.l1-table thead th { background: #e8e8e8; font-weight: 700; }
+.l1-table thead th {
+    background: #e8e8e8; font-weight: 700;
+    /* Workplace names are long and contain words wider than a narrow column
+       ("Hochlastregale", "PORTALFRAESMASCHINE"). Without these they overflow
+       the cell and print on top of the neighbouring workplace. They must live
+       here rather than in @media print, so the measuring pass sees the same
+       geometry the printer will produce. */
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+}
 
 /* Column widths — <col> tags are emitted by JS; the widths come from the
    custom properties so one JS pass drives screen + print alike. */
@@ -188,8 +199,18 @@ col.l1-col-check { width: var(--l1-col-check); }
 .l1-rh-wp-name     { font-weight: 600; background: #f5f5f5; text-align: center; }
 .l1-rh-resp-blank  { height: var(--l1-resp-blank); }
 
+/* Cells for a day this question is not audited on.
+   The hatch is a background, and Chrome drops every background when the print
+   dialog's "Background graphics" box is unchecked — which would make a cell
+   that must NOT be filled in look exactly like one that must. The dash is real
+   text, so it prints either way and the form stays unambiguous. */
 .l1-cell-disabled {
     background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #eee 2px, #eee 5px) !important;
+}
+.l1-cell-disabled::after {
+    content: "\2013";
+    color: #8c8c8c;
+    font-size: 0.85em;
 }
 .l1-signature-row td { height: 12mm; border-top: 2px solid #555; }
 .l1-signature-label  { text-align: left !important; font-weight: 700; }
@@ -245,12 +266,7 @@ col.l1-col-check { width: var(--l1-col-check); }
 
     .l1-table thead th {
         background: #e9e9e9 !important;
-        white-space: normal !important;
-        word-break: break-word !important;
-        overflow-wrap: anywhere !important;
         border: 0.45pt solid #555 !important;
-        font-weight: 700;
-        line-height: 1.1 !important;
     }
     .l1-table thead th.l1-col-check { white-space: nowrap !important; }
 

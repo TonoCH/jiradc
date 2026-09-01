@@ -1065,33 +1065,69 @@ AJS.toInit(function () {
 
   function l1Clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
+  var _l1TextProbe = null;
+
+  // Width of a string in mm, rendered the way a bold column header renders it.
+  function l1TextWidthMm(text, fontPt) {
+    if (!_l1TextProbe || !_l1TextProbe.parentNode) {
+      _l1TextProbe = document.createElement('span');
+      _l1TextProbe.style.cssText =
+        'position:absolute;left:-30000px;top:0;visibility:hidden;' +
+        'white-space:pre;font-weight:700;';
+      document.body.appendChild(_l1TextProbe);
+    }
+    _l1TextProbe.style.fontSize = fontPt + 'pt';
+    _l1TextProbe.textContent = text;
+    return _l1TextProbe.getBoundingClientRect().width / l1PxPerMm();
+  }
+
   /**
-   * Column widths for one candidate font size.
-   *
-   * Order of claims on the printable width:
-   *   1. ID and Standard scale with the font (they hold short, fixed strings).
-   *   2. Every check column gets at least enough room for a two-letter day
-   *      label at that font size — that is what stops "Mo" from being broken
-   *      into three stacked characters and inflating the table header.
-   *   3. The question column is capped, so long questions wrap over 2-3 lines
-   *      the way the original Excel sheet did, instead of stretching into one
-   *      thin line across a wide A3.
-   *   4. Whatever is still left goes back to the check columns (up to a sane
-   *      cap) and only then back to the question column.
-   *
-   * Works for 1 check column and for 50 — with many columns the check block
-   * simply squeezes down to its font-derived minimum and the question column
-   * takes the hit, which is the only thing that can give.
+   * Width one workplace column-group needs, measured from its heading.
+   * Returned per point of font size so the font search can scale it.
    */
-  function l1ColumnWidths(printableW, nCheck, fontPt, textPref) {
+  function l1NameNeed(names) {
+    var REF = 10, longestName = 0, longestWord = 0;
+    for (var i = 0; i < names.length; i++) {
+      var n = names[i] || '';
+      longestName = Math.max(longestName, l1TextWidthMm(n, REF));
+      var parts = n.split(/\s+/);
+      for (var j = 0; j < parts.length; j++) {
+        if (parts[j]) longestWord = Math.max(longestWord, l1TextWidthMm(parts[j], REF));
+      }
+    }
+    // per point of font size, so the font search can scale instead of re-measuring
+    return { word: longestWord / REF, name: longestName / REF };
+  }
+
+  function l1ColumnWidths(printableW, nCheck, fontPt, textPref, needPerPt, daysPerGroup) {
     var idW  = l1Clamp(fontPt * 1.05, 7.5, 14);
     // Wide enough for the longest standard name ("Materialbereitstellung") at
     // the reduced size the .l1-std-cell rule renders it in.
     var stdW = l1Clamp(fontPt * 3.70, 20, 46);
 
-    // A two-letter bold label plus cell padding, in mm.
+    var days = Math.max(1, daysPerGroup || 1);
+
+    // A two-letter bold day label plus cell padding, in mm.
     var checkMin = l1Clamp(fontPt * 0.3528 * 1.25 + 0.9, 4.2, 12);
-    var checkMax = Math.max(checkMin, l1Clamp(fontPt * 1.15, 7, 14));
+
+    // FLOOR — the only hard requirement: the longest unbreakable WORD of a
+    // workplace heading must fit inside its group, or the text spills out of
+    // the cell and prints across the neighbouring workplace's columns.
+    var need = needPerPt || { word: 0, name: 0 };
+    var checkFloor = Math.max(checkMin, need.word * fontPt / days);
+
+    // WISH — the whole heading wrapping in a few lines rather than a tall
+    // ribbon. Only ever paid for out of surplus width, never at the expense of
+    // the question column: a cramped question column costs vertical space on
+    // every single row, a tall heading costs it once.
+    var checkWish = Math.max(checkFloor,
+                             need.name * fontPt / (days > 1 ? 3 : 4) / days);
+
+    // CEILING: how far the group may grow to soak up width the question column
+    // is not allowed to take. A single-day printout has one column per
+    // workplace, so it may become much wider than a normal tick box.
+    var checkCeil = Math.max(checkWish,
+                             Math.max(l1Clamp(fontPt * 1.15, 7, 14), 40 / days));
 
     var avail = printableW - idW - stdW;
     if (avail < 20) {                       // pathological: shrink the fixed pair
@@ -1100,33 +1136,28 @@ AJS.toInit(function () {
       avail = printableW - idW - stdW;
     }
 
-    // Start with the check block at its minimum, question column gets the rest.
-    var checkW = checkMin;
+    var checkW = checkFloor;
     var textW  = avail - nCheck * checkW;
 
-    if (textW < 25) {
-      // Not enough width for a usable question column — take it out of the
-      // check columns down to an absolute floor, then accept the overflow.
-      var need = 25 - textW;
-      checkW = Math.max(3.6, checkW - need / Math.max(1, nCheck));
-      textW  = avail - nCheck * checkW;
-    }
-
-    // Cap the question column so questions wrap instead of running as one line.
+    // Cap the question column so questions wrap instead of running as one line,
+    // and hand whatever is left over to the check columns.
     var textCap;
     if (textPref === 0)        textCap = Infinity;                 // "as wide as possible"
     else if (textPref > 0)     textCap = textPref;                 // explicit mm
     else                       textCap = l1Clamp(printableW * 0.42, 70, 190); // auto
 
-    if (textW > textCap) {
+    if (textW > textCap && nCheck > 0) {
       var surplus = textW - textCap;
-      textW = textCap;
-      if (nCheck > 0) {
-        checkW = Math.min(checkMax, checkW + surplus / nCheck);
-        textW  = avail - nCheck * checkW;   // any remainder after the cap
-      } else {
-        textW = avail;
-      }
+      checkW = Math.min(checkCeil, checkW + surplus / nCheck);
+      textW  = avail - nCheck * checkW;
+    }
+
+    // The other direction: too many columns, or names so long that the floor
+    // squeezes the questions out. Readable questions win — the names wrap over
+    // more lines instead.
+    if (textW < L1_TEXT_USABLE && nCheck > 0) {
+      checkW = Math.max(checkMin, (avail - L1_TEXT_USABLE) / nCheck);
+      textW  = avail - nCheck * checkW;
     }
 
     textW = Math.max(18, textW);
@@ -1134,8 +1165,10 @@ AJS.toInit(function () {
     return {
       id: idW, std: stdW, check: checkW, text: textW,
       // Enough width left for a readable question column at this font?
-      fits: (idW + stdW + nCheck * checkW + L1_TEXT_USABLE) <= printableW + 0.5,
-      usable: textW >= L1_TEXT_USABLE
+      fits: (idW + stdW + nCheck * checkMin + L1_TEXT_USABLE) <= printableW + 0.5,
+      usable: textW >= L1_TEXT_USABLE,
+      // Did the workplace names have to be squeezed below what they need?
+      namesSqueezed: checkW < checkFloor - 0.05
     };
   }
 
@@ -1305,6 +1338,8 @@ AJS.toInit(function () {
 
     var lastChecklistData = null; // cached data to avoid re-fetch on day filter change
     var lastCheckCols     = 0;    // workplaces x visible days of the current render
+    var lastDaysPerGroup  = 5;    // columns under one workplace heading
+    var lastWpNames       = [];   // the workplace headings themselves
 
     if (selPaper) {
       selPaper.addEventListener('change', function () {
@@ -1421,13 +1456,14 @@ AJS.toInit(function () {
     function l1FitPrint() {
       if (!pageEl) return;
       var tbl = pageEl.querySelector('.l1-table');
-      if (!tbl) { if (fitInfo) fitInfo.textContent = ''; return; }
+      if (!tbl) { if (fitInfo) fitInfo.innerHTML = ''; return; }
 
       var box     = l1PageBox();
       var mode    = selFit ? selFit.value : 'auto';
       var density = selDensity ? selDensity.value : 'normal';
       var dens    = L1_DENSITY[density] || L1_DENSITY.normal;
       var nCheck  = lastCheckCols;
+      var days    = lastDaysPerGroup;
 
       var textPref = -1;
       if (selTextW && selTextW.value !== 'auto') {
@@ -1435,9 +1471,15 @@ AJS.toInit(function () {
         textPref = isNaN(tp) ? -1 : tp;
       }
 
+      // Measured once here rather than per font candidate: text width scales
+      // linearly with font size, so one reference measurement is enough.
+      var needPerPt = l1NameNeed(lastWpNames);
+
+      function colsFor(fontPt) {
+        return l1ColumnWidths(box.w, nCheck, fontPt, textPref, needPerPt, days);
+      }
       function metricsFor(fontPt, rowMin) {
-        return l1Metrics(fontPt, l1ColumnWidths(box.w, nCheck, fontPt, textPref),
-                         density, rowMin);
+        return l1Metrics(fontPt, colsFor(fontPt), density, rowMin);
       }
 
       var manualFont = (selFont && selFont.value !== 'auto')
@@ -1470,7 +1512,7 @@ AJS.toInit(function () {
 
       // Too many check columns to keep a readable question column at that
       // size? Then readability is not on offer — drop to the absolute floor.
-      if (manualFont === null && !l1ColumnWidths(box.w, nCheck, floorFont, textPref).fits) {
+      if (manualFont === null && !colsFor(floorFont).fits) {
         floorFont = L1_FONT_MIN;
       }
 
@@ -1558,8 +1600,10 @@ AJS.toInit(function () {
         .then(function (data) {
           stateMsg.style.display = 'none';
           lastChecklistData = data;
+          // l1RenderTable owns the Print button: it enables it once a real
+          // checklist is on the page and keeps it disabled when the render
+          // produced nothing to print.
           l1RenderTable(data);
-          btnPrint.disabled = false;
         })
         .catch(function (e) {
           stateMsg.textContent = 'Error: ' + e.message;
@@ -1619,8 +1663,29 @@ AJS.toInit(function () {
       }
 
       if (questions.length === 0) {
-        tableWrap.innerHTML = '<div class="l1-state-msg">No questions found (' + escapeHtml(data.usageKey) + ')</div>';
+        // Two very different situations, and blaming the Question Usage for
+        // both sent an auditor looking for a configuration error that was not
+        // there: the usage key can hold plenty of questions and simply have
+        // none scheduled for the weekday that is selected.
+        var emptyMsg;
+        if (allQ.length === 0) {
+          emptyMsg = 'No questions found for ' + escapeHtml(data.usageKey);
+        } else {
+          var dayName = selDay.options[selDay.selectedIndex]
+            ? selDay.options[selDay.selectedIndex].text : dayFilter;
+          emptyMsg = 'No questions scheduled for ' + escapeHtml(dayName)
+            + ' — ' + escapeHtml(data.usageKey) + ' has ' + allQ.length
+            + ' question' + (allQ.length === 1 ? '' : 's')
+            + ' on other weekdays. Choose another weekday or "All (Mon-Fri)".';
+        }
+        tableWrap.innerHTML = '<div class="l1-state-msg">' + emptyMsg + '</div>';
         reportFooter.style.display = 'none';
+        // Nothing was laid out, so the numbers from the previous checklist must
+        // not stay on the bar claiming to describe this one.
+        lastCheckCols = 0;
+        lastWpNames   = [];
+        btnPrint.disabled = true;
+        l1FitPrint();
         return;
       }
 
@@ -1641,7 +1706,9 @@ AJS.toInit(function () {
       // Column count drives every width decision downstream; l1FitPrint()
       // reads it back after the markup is in the DOM.
       var totalCheckCols = wp.length * visDays.length;
-      lastCheckCols = totalCheckCols;
+      lastCheckCols    = totalCheckCols;
+      lastDaysPerGroup = visDays.length;
+      lastWpNames      = wp.map(function (w) { return w.name || ''; });
 
       var h = '<table class="l1-table">';
 
@@ -1722,6 +1789,7 @@ AJS.toInit(function () {
       tableWrap.innerHTML = h;
       l1ApplyPaperClass();
 
+      btnPrint.disabled = false;
       reportFooter.style.display = 'flex';
       document.getElementById('l1-footerDate').textContent =
         'Generated: ' + new Date().toLocaleDateString('en-GB');
