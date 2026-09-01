@@ -31,12 +31,12 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
 
     private static final Logger log = Logger.getLogger("scriptrunner.listener.project-information-update-queue")
 
-    private static final String ISSUE_TYPE_INITIATIVE = "Initiative"
+    //private static final String ISSUE_TYPE_INITIATIVE = "Initiative"
     private static final boolean ENABLE_OLD_PROJECT_INFORMATION_SYNC = false
     private static final int MAX_HIERARCHY_DEPTH = 50
 
-    private final Map<Long, Issue> parentCache = [:]
-    private final Set<Long> resolvedParents = [] as Set<Long>
+    //private final Map<Long, Issue> parentCache = [:]
+    //private final Set<Long> resolvedParents = [] as Set<Long>
 
     void handle(IssueEvent event) {
         Issue eventIssue = event?.issue
@@ -53,8 +53,13 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         boolean oldFieldChanged = ENABLE_OLD_PROJECT_INFORMATION_SYNC &&
                 fieldChanged(changedFields, cfOldProjectInformation)
 
+        boolean hierarchyChanged =
+                fieldChanged(changedFields, cfParentLink) ||
+                        fieldChanged(changedFields, cfEpicLink)
+
         // Internal silent writes have no matching user-field change and therefore do not queue again.
-        if (!newFieldChanged && !oldFieldChanged) return
+        //if (!newFieldChanged && !oldFieldChanged) return
+        if (!newFieldChanged && !oldFieldChanged && !hierarchyChanged) return
 
         MutableIssue source = issueManager.getIssueObject(eventIssue.id) as MutableIssue
         if (!source) {
@@ -63,8 +68,13 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         }
 
         try {
-            String requestedValue = resolveRequestedValue(source, newFieldChanged, oldFieldChanged)
-            Map authority = calculateSourceAuthority(source, requestedValue)
+            boolean directChange = newFieldChanged || oldFieldChanged
+            String requestedValue = directChange
+                    ? resolveRequestedValue(source, newFieldChanged, oldFieldChanged)
+                    : selectValue(source)
+
+            Map authority = calculateSourceAuthority(source, requestedValue, directChange, hierarchyChanged)
+
             String result = applySourceValuesAndQueue(
                     source,
                     authority.value as String,
@@ -96,48 +106,79 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
                 : ""
     }
 
-    private Map calculateSourceAuthority(Issue source, String requestedValue) {
+    private Map calculateSourceAuthority(
+            Issue source,
+            String requestedValue,
+            boolean directChange,
+            boolean hierarchyChanged) {
+
         String requested = requestedValue?.trim() ?: ""
+        String currentOverride = textValue(source, cfOverride).trim()
 
-        if (isInitiative(source)) {
-            return [value: requested, overrideKey: source.key, sourceKey: requested ? source.key : ""]
+        if (directChange) {
+            if (requested) {
+                return [
+                        value      : requested,
+                        overrideKey: source.key,
+                        sourceKey  : source.key
+                ]
+            }
+
+
+            return resolveEffectiveAuthority(getParent(source))
         }
 
-        Map parentAuthority = resolveEffectiveAuthority(getParent(source))
-        String parentValue = parentAuthority.value ?: ""
-        String parentOverride = parentAuthority.overrideKey ?: ""
+        if (hierarchyChanged &&
+                normalize(currentOverride) == normalize(source.key)) {
 
-        if (!requested) {
-            return [value: parentValue, overrideKey: parentOverride,
-                    sourceKey: parentAuthority.sourceKey ?: ""]
+            return [
+                    value      : requested,
+                    overrideKey: source.key,
+                    sourceKey  : source.key
+            ]
         }
-        if (parentValue && normalize(requested) == normalize(parentValue)) {
-            return [value: parentValue, overrideKey: parentOverride,
-                    sourceKey: parentAuthority.sourceKey ?: ""]
-        }
-        return [value: requested, overrideKey: source.key, sourceKey: source.key]
+
+        return resolveEffectiveAuthority(getParent(source))
     }
 
     private Map resolveEffectiveAuthority(Issue issue) {
-        if (!issue) return [value: "", overrideKey: "", sourceKey: ""]
+        if (!issue) {
+            return [value: "", overrideKey: "", sourceKey: ""]
+        }
 
         Set<Long> seen = [] as Set<Long>
         Issue current = issue
         int depth = 0
+
         while (current && depth++ < MAX_HIERARCHY_DEPTH) {
             if (!seen.add(current.id)) {
-                throw new IllegalStateException("Cycle detected while resolving authority at ${current.key}")
+                throw new IllegalStateException(
+                        "Cycle detected while resolving authority at ${current.key}"
+                )
             }
+
             String value = selectValue(current)
-            String override = textValue(current, cfOverride).trim()
+            String overrideKey = textValue(current, cfOverride).trim()
+
             if (value) {
-                if (override) return [value: value, overrideKey: override, sourceKey: override]
-                if (isInitiative(current)) return [value: value, overrideKey: current.key, sourceKey: current.key]
-                return [value: value, overrideKey: current.key, sourceKey: current.key]
+                String authorityKey = overrideKey ?: current.key
+
+                return [
+                        value      : value,
+                        overrideKey: authorityKey,
+                        sourceKey  : authorityKey
+                ]
             }
+
             current = getParent(current)
         }
-        if (current) throw new IllegalStateException("Hierarchy depth exceeds ${MAX_HIERARCHY_DEPTH}")
+
+        if (current) {
+            throw new IllegalStateException(
+                    "Hierarchy depth exceeds ${MAX_HIERARCHY_DEPTH}"
+            )
+        }
+
         return [value: "", overrideKey: "", sourceKey: ""]
     }
 
@@ -172,19 +213,17 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
 
     private Issue getParent(Issue issue) {
         if (!issue) return null
-        if (resolvedParents.contains(issue.id)) return parentCache[issue.id]
-        Issue parent = null
-        try {
-            if (issue.isSubTask()) {
-                parent = issue.parentObject
-            } else {
-                parent = resolveIssue(issue.getCustomFieldValue(cfEpicLink))
-                if (!parent) parent = resolveIssue(issue.getCustomFieldValue(cfParentLink))
-            }
-        } finally {
-            resolvedParents.add(issue.id)
-            parentCache[issue.id] = parent
+
+        if (issue.isSubTask()) {
+            return issue.parentObject
         }
+
+        Issue parent = resolveIssue(issue.getCustomFieldValue(cfEpicLink))
+
+        if (!parent) {
+            parent = resolveIssue(issue.getCustomFieldValue(cfParentLink))
+        }
+
         return parent
     }
 
@@ -267,9 +306,9 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         return missing ? "missing custom fields: ${missing.join(', ')}" : null
     }
 
-    private static boolean isInitiative(Issue issue) {
+    /*private static boolean isInitiative(Issue issue) {
         issue?.issueType?.name == ISSUE_TYPE_INITIATIVE
-    }
+    }*/
 
     private static String normalize(String value) {
         value == null ? "" : value.trim()
