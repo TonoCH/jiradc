@@ -208,7 +208,7 @@ col.l1-col-check { width: var(--l1-col-check); }
     background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #eee 2px, #eee 5px) !important;
 }
 .l1-cell-disabled::after {
-    content: "\2013";
+    content: "-";
     color: #8c8c8c;
     font-size: 0.85em;
 }
