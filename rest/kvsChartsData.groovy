@@ -237,18 +237,26 @@ kvsChartsData(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
 
         Map sources = [
                 overallGauge        : [
-                        type        : "formula",
-                        description : "Rolling KPI across the last " + weeks + " weekly snapshots. Formula: sum of weighted positive statuses divided by sum of weighted positive + weighted NOK aging penalties. Values averaged across the window (non-zero weeks only). Zones: Red < 75 pct, Yellow 75-90 pct, Green >= 90 pct.",
+                        type        : "snapshot",
+                        description : "Value recorded in the weekly KPI snapshot for each week, averaged across the selected window of " + weeks + " weeks (weeks without a snapshot are skipped). " +
+                                "Snapshots are written every Monday shortly after midnight and describe the week that has just closed. " +
+                                "Formula: points divided by (points + open weeks). Every question with status OK / FIXED / I.O.N.M. is worth 1 point; TO DO, Not Checked and Duplicate are ignored; " +
+                                "every NOK adds a penalty equal to the number of weeks it has been open, counted from the Target end date of its audit. " +
+                                "Example: 100 questions OK and 1 deviation open for 5 weeks gives 100 / (100 + 5) = 95.2 pct. " +
+                                "Zones: Red < 75 pct, Yellow 75-90 pct, Green >= 90 pct. Press Live to recalculate all of this from today's Jira state.",
                         questionsJql: questionsJqlBase
                 ],
                 categoryGrid        : [
                         type        : "snapshot",
-                        description : "Per-category KPI from the LATEST available weekly snapshot for this scope. Categories come from the Category EN custom field on Question issues (free-text). Empty values fall back to Uncategorized.",
+                        description : "The same formula applied separately to each category (field Category EN on the question), taken from the LATEST available weekly snapshot for this scope. " +
+                                "Points and penalties are summed only within the category, so a single long-open deviation pulls down a small category much harder than a big one. " +
+                                "Categories with no evaluated question are not shown; an empty category shows as Uncategorized. Press Live to recalculate from today's Jira state.",
                         questionsJql: questionsJqlBase
                 ],
                 trendPerf           : [
                         type        : "snapshot",
-                        description : "Weekly KPI value per scope. Values come from KPI snapshots in project " + CustomFieldsConstants.PROJECT_KPI + ". Weeks without a snapshot show 0 pct.",
+                        description : "Real history: each point is the KPI value as it was recorded in that week's snapshot (project " + CustomFieldsConstants.PROJECT_KPI + "), so it shows how the score actually developed week by week. " +
+                                "Weeks without a snapshot show 0 pct. Press Live to add a second, dashed curve recalculated from today's statuses.",
                         questionsJql: questionsJqlBase
                 ],
                 historyOpen         : [

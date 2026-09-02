@@ -36,6 +36,7 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
     .kvs-topbar .ds-badge.snapshot { background: #E3FCEF; color: #006644; }
     .kvs-topbar .ds-badge.onthefly { background: #FFF0B3; color: #974F0C; }
     .kvs-topbar .ds-badge.mixed    { background: #DEEBFF; color: #0747A6; }
+    .kvs-topbar .ds-badge.live     { background: #0052CC; color: #fff; }
 
     .chart-grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: flex-start; }
     .chart-card { flex: 1 1 400px; /*max-width: 520px;*/ background: #fafbfc; padding: 14px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); box-sizing: border-box; }
@@ -89,6 +90,11 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
     .kvs-info-card .zone { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #42526E; }
     .kvs-info-card .zone .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .kvs-info-card code { background: #fff; padding: 0 4px; border-radius: 2px; font-size: 11px; color: #172B4D; border: 1px solid #dfe1e6; }
+    .kvs-info-card .kvs-info-table { border-collapse: collapse; margin: 6px 0 8px 0; font-size: 12px; }
+    .kvs-info-card .kvs-info-table td { padding: 3px 12px 3px 0; color: #42526E; vertical-align: top; }
+    .kvs-info-card .kvs-formula { background: #fff; border: 1px solid #B3D4FF; border-radius: 3px;
+        padding: 8px 12px; margin: 8px 0; font-family: Menlo, Consolas, "Courier New", monospace;
+        font-size: 12px; color: #172B4D; display: inline-block; }
 
     /* ─── Source data collapsibles ─── */
     .src-details { margin-top: 8px; font-size: 11px; }
@@ -106,6 +112,7 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
     .src-details .src-badge.jql { background: #DEEBFF; color: #0747A6; }
     .src-details .src-badge.snapshot { background: #E3FCEF; color: #006644; }
     .src-details .src-badge.formula { background: #FFF0B3; color: #974F0C; }
+    .src-details .src-badge.live { background: #0052CC; color: #fff; }
 
     /* Print tweaks — A4 portrait optimised */
     @media print {
@@ -172,7 +179,7 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
         <h3>Overall Performance
           <button id="kvs-live-refresh-btn" type="button"
                   style="float:right;font-size:11px;padding:2px 8px;cursor:pointer;"
-                  title="Recalculate from today's Jira state (slower, ignores snapshot)">
+                  title="Recalculate Overall Performance, Trend and Performance per Category from today's Jira state. Click again to go back to the recorded snapshots.">
             🔄 Live
           </button>
         </h3>
@@ -199,21 +206,51 @@ kvsChartsHtml(httpMethod: "GET", groups: ["jira-administrators", "kvs-audit-admi
       <div class="chart-card chart-card--full">
         <h3>Performance per Category</h3>
         <div id="categoryGrid" class="kvs-category-grid"></div>
-        <div class="chart-desc">Per-category KPI from the latest weekly snapshot (based on "Category EN" on Question issues).</div>
+        <div class="categoryGrid-chart-desc chart-desc">Per-category KPI from the latest weekly snapshot (based on "Category EN" on Question issues).</div>
         <details class="src-details" data-src-key="categoryGrid"></details>
       </div>
     </div>
 
     <!-- Performance explainer: what does the number mean? -->
     <div class="kvs-info-card">
-      <h3>What is “Performance”?</h3>
+      <h3>How is “Performance” calculated?</h3>
+      <p>Every audited question ends up in one of these states:</p>
+      <table class="kvs-info-table">
+        <tr>
+          <td><code>OK</code>, <code>FIXED</code>, <code>I.O.N.M.</code></td>
+          <td><strong>+1 point</strong> — the criterion is in order</td>
+        </tr>
+        <tr>
+          <td><code>NOK</code></td>
+          <td><strong>penalty</strong> — an open deviation</td>
+        </tr>
+        <tr>
+          <td><code>TO DO</code>, <code>Not Checked</code>, <code>Duplicate</code></td>
+          <td>ignored — not evaluated yet</td>
+        </tr>
+      </table>
       <p>
-        KVS Performance is a weighted KPI: positive Question statuses
-        (<code>OK</code>, <code>FIXED</code>, <code>I.O.N.M.</code>) raise it,
-        while unresolved deviations (<code>NOK</code>) lower it —
-        and the longer a NOK stays open, the more it penalises the score
-        (<em>N × weight × age-in-weeks</em>). The gauge shows the average
-        across the selected weekly window (non-zero weeks only).
+        The penalty for a <code>NOK</code> is <strong>not fixed — it grows every week the deviation
+        stays open.</strong> A deviation open for 5 weeks costs 5&times; more than one found this week.
+      </p>
+      <p class="kvs-formula">
+        Performance = points &divide; ( points + &Sigma; weeks each NOK has been open )
+      </p>
+      <p>
+        <strong>Example:</strong> 100 questions OK, 1 deviation open for 5 weeks &rarr;
+        <code>100 ÷ (100 + 5) = 95.2 %</code>. If nobody fixes it, next week it is
+        <code>100 ÷ 106 = 94.3 %</code>.
+      </p>
+      <p>
+        <strong>This is why the score falls even when nothing changes.</strong> Every Monday each open
+        deviation costs one week more. The only way up is to close deviations.
+        The age of a deviation is counted from the <strong>Target end date of its audit</strong>,
+        in whole ISO weeks.
+      </p>
+      <p>
+        <strong>🔄 Live</strong> runs exactly this formula against today’s Jira state instead of the
+        stored Monday snapshot, and updates <em>Overall Performance</em>, <em>Trend</em> and
+        <em>Performance per Category</em>. Click it again to return to the recorded snapshots.
       </p>
       <div class="zones">
         <span class="zone"><span class="dot" style="background:#E53935"></span>Red &lt; 75 % — action required</span>
