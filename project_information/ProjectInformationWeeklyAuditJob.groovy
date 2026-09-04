@@ -64,8 +64,16 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
                         findings << finding(issue, "SYNC_GIVEN_UP", "", queue,
                                 "Propagation failed ${MAX_SYNC_ATTEMPTS} times and is no longer retried")
                     }
+                    boolean manualRepairOnly = QUEUE_REPAIR_NOT_POSSIBLE.equalsIgnoreCase(queue)
+                    if (manualRepairOnly) {
+                        findings << finding(issue, "REPAIR_NOT_POSSIBLE", selectValue(issue), queue,
+                                "A listener failed and marked this issue for manual repair")
+                    }
 
-                    if (auditIssue(issue, findings, repairTargets)) valid++
+                    // Keep reporting field-level inconsistencies, but never auto-repair an issue
+                    // whose listener explicitly preserved it for a manual decision.
+                    Set<Long> issueRepairTargets = manualRepairOnly ? ([] as Set<Long>) : repairTargets
+                    if (auditIssue(issue, findings, issueRepairTargets)) valid++
 
                     if (selectValue(issue)) valuedIds << id
                 } catch (Exception issueError) {
@@ -117,11 +125,14 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
         }
 
         Issue authority = override ? issueManager.getIssueObject(override) : null
+        boolean overrideUsable = true
         if (override && !authority) {
+            overrideUsable = false
             ok = false
             findings << finding(issue, "INVALID_OVERRIDE", value, override,
                     "Override Key does not reference an existing issue")
         } else if (override && override != issue.key && !isAncestor(issue, authority.id)) {
+            overrideUsable = false
             ok = false
             findings << finding(issue, "OVERRIDE_NOT_ANCESTOR", value, override,
                     "Override Key exists but is not an ancestor of this issue")
@@ -143,7 +154,7 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
         }
 
         if (!ok) {
-            Long target = repairTarget(issue, value, override, expected)
+            Long target = repairTarget(issue, value, override, expected, overrideUsable)
             if (target) repairTargets << target
             else findings << finding(issue, "REPAIR_NOT_POSSIBLE", value, override,
                     "No authority could be determined; this issue needs a manual decision")
@@ -155,8 +166,12 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
      * The issue whose queue entry fixes this finding: the issue itself when it is a valid self
      * authority, otherwise the ancestor authority that should be governing it.
      */
-    private Long repairTarget(Issue issue, String value, String override, Map expected) {
+    private Long repairTarget(Issue issue, String value, String override, Map expected,
+                              boolean overrideUsable) {
         if (override == issue.key && value) return issue.id
+        // A non-empty value without a trustworthy authority may be an explicit user choice.
+        // Choosing the parent automatically could silently overwrite it.
+        if (value && (!override || !overrideUsable)) return null
         String authorityKey = normalize(expected?.overrideKey as String)
         if (authorityKey) {
             Issue authority = issueManager.getIssueObject(authorityKey)

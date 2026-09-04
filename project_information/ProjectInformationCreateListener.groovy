@@ -78,6 +78,7 @@ class ProjectInformationCreateListener extends ProjectInformationConfig {
             if (authorityToRequeue) requeueAuthority(authorityToRequeue, created.key)
         } catch (Exception e) {
             log.error("PI initialization failed for ${created.key}: ${e.message}", e)
+            markRepairNotPossible(created.id, created.key, "Issue Created", e)
         }
     }
 
@@ -90,6 +91,6 @@ class ProjectInformationCreateListener extends ProjectInformationConfig {
         }
         boolean queued = queueForSync(authority.id)
         log.warn("${failedIssueKey}: inheritance write failed; authority ${authorityKey} " +
-                (queued ? "queued for re-propagation" : "is already queued"))
+                (queued ? "queued for re-propagation" : "already has a queue or failure state"))
     }
 }

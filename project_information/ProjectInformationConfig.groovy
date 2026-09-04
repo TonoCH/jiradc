@@ -75,6 +75,7 @@ class ProjectInformationConfig {
     public static final String QUEUE_PENDING = "true"
     public static final String QUEUE_PROCESSING = "PROCESSING"
     public static final String QUEUE_FAILED = "FAILED"
+    public static final String QUEUE_REPAIR_NOT_POSSIBLE = "REPAIR_NOT_POSSIBLE"
 
     // ---------------------------------------------------------------- components
 
@@ -331,8 +332,8 @@ class ProjectInformationConfig {
     }
 
     /**
-     * Marks an issue as a source for the incremental job, without disturbing an entry that is
-     * already pending or currently being processed.
+     * Marks an issue as a source for the incremental job. A request received while the issue is
+     * being processed changes PROCESSING back to pending, so releaseClaim() cannot erase it.
      *
      * Only an authority may be queued. Queueing a descendant instead would make the job treat that
      * descendant's own (possibly empty) value as the truth and propagate it downwards, and the
@@ -346,10 +347,40 @@ class ProjectInformationConfig {
             MutableIssue latest = issueManager.getIssueObject(issueId) as MutableIssue
             if (!latest) return false
             String state = normalize(textValue(latest, cfPiSyncRequired))
-            if (QUEUE_PENDING.equalsIgnoreCase(state) || QUEUE_PROCESSING.equalsIgnoreCase(state)) return false
+            if (QUEUE_PENDING.equalsIgnoreCase(state)) return false
+            // A request arriving during propagation must survive releaseClaim(), which only clears
+            // an unchanged PROCESSING state. Existing failures and manual markers are kept intact.
+            if (state && !QUEUE_PROCESSING.equalsIgnoreCase(state)) return false
             setQueueState(latest, QUEUE_PENDING)
             return true
         }
+    }
+
+    /** Persists a listener failure for manual handling and sends an immediate notification. */
+    protected void markRepairNotPossible(Long issueId, String issueKey, String operation, Exception failure) {
+        String markerFailure = ""
+        try {
+            withIssueLock(issueId) {
+                MutableIssue latest = issueManager.getIssueObject(issueId) as MutableIssue
+                if (!latest) throw new IllegalStateException("Cannot reload ${issueKey}")
+                setQueueState(latest, QUEUE_REPAIR_NOT_POSSIBLE)
+                return null
+            }
+        } catch (Exception markerError) {
+            markerFailure = markerError.message ?: markerError.class.name
+            log.error("${issueKey}: could not set ${QUEUE_REPAIR_NOT_POSSIBLE}: ${markerFailure}", markerError)
+        }
+
+        String reason = failure?.message ?: failure?.class?.name ?: "Unknown listener failure"
+        String markerStatus = markerFailure
+                ? "The manual-repair marker could not be written: ${markerFailure}"
+                : "PI_SYNC_REQUIRED was set to ${QUEUE_REPAIR_NOT_POSSIBLE}."
+        sendMail("[PI Sync] Manual repair required for ${issueKey}",
+                "<h2>Project Information listener failure</h2>" +
+                "<p><b>Issue:</b> ${html(issueKey)}<br/>" +
+                "<b>Operation:</b> ${html(operation)}<br/>" +
+                "<b>Reason:</b> ${html(reason)}<br/>" +
+                "<b>Status:</b> ${html(markerStatus)}</p>")
     }
 
     /** Writes PI_SYNC_REQUIRED only. An empty state clears the field. */

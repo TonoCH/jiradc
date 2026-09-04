@@ -65,6 +65,7 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
                     "value='${outcome.authority.value ?: ''}'; override='${outcome.authority.overrideKey ?: ''}'")
         } catch (Exception e) {
             log.error("PI update listener failed for ${eventIssue.key}: ${e.message}", e)
+            markRepairNotPossible(eventIssue.id, eventIssue.key, "Issue Updated", e)
         }
     }
 
