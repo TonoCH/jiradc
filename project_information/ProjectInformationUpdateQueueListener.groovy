@@ -31,12 +31,7 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
 
     private static final Logger log = Logger.getLogger("scriptrunner.listener.project-information-update-queue")
 
-    //private static final String ISSUE_TYPE_INITIATIVE = "Initiative"
     private static final boolean ENABLE_OLD_PROJECT_INFORMATION_SYNC = false
-    private static final int MAX_HIERARCHY_DEPTH = 50
-
-    //private final Map<Long, Issue> parentCache = [:]
-    //private final Set<Long> resolvedParents = [] as Set<Long>
 
     void handle(IssueEvent event) {
         Issue eventIssue = event?.issue
@@ -55,55 +50,68 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
 
         boolean hierarchyChanged =
                 fieldChanged(changedFields, cfParentLink) ||
-                        fieldChanged(changedFields, cfEpicLink)
+                        fieldChanged(changedFields, cfEpicLink) ||
+                        systemFieldChanged(changedFields, "parent", "Parent") ||
+                        systemFieldChanged(changedFields, "issuetype", "Issue Type") ||
+                        systemFieldChanged(changedFields, "project", "Project")
 
         // Internal silent writes have no matching user-field change and therefore do not queue again.
         //if (!newFieldChanged && !oldFieldChanged) return
         if (!newFieldChanged && !oldFieldChanged && !hierarchyChanged) return
 
-        MutableIssue source = issueManager.getIssueObject(eventIssue.id) as MutableIssue
-        if (!source) {
-            log.error("Cannot reload ${eventIssue.key}")
-            return
-        }
-
         try {
-            boolean directChange = newFieldChanged || oldFieldChanged
-            String requestedValue = directChange
-                    ? resolveRequestedValue(source, newFieldChanged, oldFieldChanged)
-                    : selectValue(source)
+            Map outcome = withIssueLock(eventIssue.id) {
+                MutableIssue source = issueManager.getIssueObject(eventIssue.id) as MutableIssue
+                if (!source) {
+                    throw new IllegalStateException("Cannot reload ${eventIssue.key}")
+                }
 
-            Map authority = calculateSourceAuthority(source, requestedValue, directChange, hierarchyChanged)
-
-            String result = applySourceValuesAndQueue(
-                    source,
-                    authority.value as String,
-                    authority.overrideKey as String
-            )
-            if (result == "FAILED") {
-                throw new IllegalStateException("Source issue could not be queued")
+                boolean directChange = newFieldChanged || oldFieldChanged
+                String requestedValue = directChange
+                        ? resolveRequestedValue(event, source, newFieldChanged, oldFieldChanged)
+                        : selectValue(source)
+                Map authority = calculateSourceAuthority(source, requestedValue, directChange, hierarchyChanged)
+                String result = applySourceValuesAndQueue(
+                        source,
+                        authority.value as String,
+                        authority.overrideKey as String
+                )
+                if (result == "FAILED") {
+                    throw new IllegalStateException("Source issue could not be queued")
+                }
+                return [key: source.key, authority: authority, result: result]
             }
-            log.info("PI synchronization queued for ${source.key}; result=${result}; " +
-                    "value='${authority.value ?: ''}'; override='${authority.overrideKey ?: ''}'")
+            log.info("PI synchronization queued for ${outcome.key}; result=${outcome.result}; " +
+                    "value='${outcome.authority.value ?: ''}'; " +
+                    "override='${outcome.authority.overrideKey ?: ''}'")
         } catch (Exception e) {
-            log.error("PI update listener failed for ${source.key}: ${e.message}", e)
+            log.error("PI update listener failed for ${eventIssue.key}: ${e.message}", e)
         }
     }
 
-    private String resolveRequestedValue(MutableIssue source, boolean newFieldChanged, boolean oldFieldChanged) {
+    private String resolveRequestedValue(IssueEvent event, MutableIssue source,
+                                         boolean newFieldChanged, boolean oldFieldChanged) {
         if (newFieldChanged) {
-            String value = selectValue(source)
+            Map changedValue = getChangedFieldValue(event, cfProjectInformation)
+            String value = changedValue.found
+                    ? (changedValue.value?.toString()?.trim() ?: "")
+                    : selectValue(source)
             if (oldFieldChanged) {
-                String oldValue = extractOldProjectInformation(source.getCustomFieldValue(cfOldProjectInformation))
+                Map changedOldValue = getChangedFieldValue(event, cfOldProjectInformation)
+                String oldValue = changedOldValue.found
+                        ? extractOldProjectInformation(changedOldValue.value)
+                        : extractOldProjectInformation(source.getCustomFieldValue(cfOldProjectInformation))
                 if (normalize(oldValue) != normalize(value)) {
                     log.warn("Both PI fields changed on ${source.key}; ${CF_PROJECT_INFORMATION_N} wins")
                 }
             }
             return value
         }
-        return oldFieldChanged
-                ? extractOldProjectInformation(source.getCustomFieldValue(cfOldProjectInformation))
-                : ""
+        if (!oldFieldChanged) return ""
+        Map changedOldValue = getChangedFieldValue(event, cfOldProjectInformation)
+        return changedOldValue.found
+                ? extractOldProjectInformation(changedOldValue.value)
+                : extractOldProjectInformation(source.getCustomFieldValue(cfOldProjectInformation))
     }
 
     private Map calculateSourceAuthority(
@@ -185,24 +193,49 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
     private String applySourceValuesAndQueue(MutableIssue issue, String targetValue, String targetOverrideKey) {
         String target = targetValue?.trim() ?: ""
         String targetOverride = targetOverrideKey?.trim() ?: ""
+        Option targetOption = target ? findActiveOption(issue, target) : null
+        if (target && !targetOption) {
+            log.error("${issue.key}: active option '${target}' not found in relevant context")
+            return "FAILED"
+        }
+
+        Object currentRaw = issue.getCustomFieldValue(cfProjectInformation)
+        String currentValue = selectValue(issue)
         String currentText = textValue(issue, cfTextMirror)
         String currentOverride = textValue(issue, cfOverride).trim()
         String currentQueue = textValue(issue, cfPiSyncRequired).trim()
 
+        boolean piChanged = normalize(currentValue) != normalize(target)
         boolean textChanged = normalize(currentText) != normalize(target)
         boolean overrideChanged = normalize(currentOverride) != normalize(targetOverride)
         boolean queueChanged = !"true".equalsIgnoreCase(currentQueue)
-        if (!textChanged && !overrideChanged && !queueChanged) return "UNCHANGED"
+        if (!piChanged && !textChanged && !overrideChanged && !queueChanged) return "UNCHANGED"
 
-        DefaultIssueChangeHolder holder = new DefaultIssueChangeHolder()
         try {
-            if (textChanged) updateTextFieldSilently(cfTextMirror, issue, currentText, target, holder)
-            if (overrideChanged) updateTextFieldSilently(cfOverride, issue, currentOverride, targetOverride, holder)
-            if (queueChanged) updateTextFieldSilently(cfPiSyncRequired, issue, currentQueue, "true", holder)
-
-            issue.setCustomFieldValue(cfTextMirror, target ?: null)
-            issue.setCustomFieldValue(cfOverride, targetOverride ?: null)
-            issue.setCustomFieldValue(cfPiSyncRequired, "true")
+            inTransaction {
+                DefaultIssueChangeHolder holder = new DefaultIssueChangeHolder()
+                if (piChanged) {
+                    Collection<Option> oldOptions = currentRaw instanceof Collection
+                            ? currentRaw as Collection<Option> : []
+                    Collection<Option> newOptions = targetOption ? [targetOption] : []
+                    cfProjectInformation.updateValue(null, issue,
+                            new ModifiedValue(oldOptions, newOptions), holder)
+                    issue.setCustomFieldValue(cfProjectInformation, newOptions)
+                }
+                if (textChanged) {
+                    updateTextFieldSilently(cfTextMirror, issue, currentText, target, holder)
+                    issue.setCustomFieldValue(cfTextMirror, target ?: null)
+                }
+                if (overrideChanged) {
+                    updateTextFieldSilently(cfOverride, issue, currentOverride, targetOverride, holder)
+                    issue.setCustomFieldValue(cfOverride, targetOverride ?: null)
+                }
+                if (queueChanged) {
+                    updateTextFieldSilently(cfPiSyncRequired, issue, currentQueue, "true", holder)
+                    issue.setCustomFieldValue(cfPiSyncRequired, "true")
+                }
+                return null
+            }
             indexingService.reIndex(issue)
             return "UPDATED"
         } catch (Exception e) {
@@ -214,9 +247,7 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
     private Issue getParent(Issue issue) {
         if (!issue) return null
 
-        if (issue.isSubTask()) {
-            return issue.parentObject
-        }
+        if (issue.parentObject) return issue.parentObject
 
         Issue parent = resolveIssue(issue.getCustomFieldValue(cfEpicLink))
 
@@ -253,6 +284,41 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         return result
     }
 
+    private Map getChangedFieldValue(IssueEvent event, CustomField field) {
+        if (!field) return [found: false, value: null]
+        Set<String> aliases = [field.id?.toLowerCase(Locale.ROOT),
+                               field.name?.toLowerCase(Locale.ROOT),
+                               field.idAsLong?.toString()].findAll { it } as Set<String>
+
+        List matchingItems = event.changeLog?.getRelated("ChildChangeItem")?.findAll { item ->
+            ["field", "fieldid"].any { String property ->
+                try {
+                    String token = item.getString(property)?.trim()?.toLowerCase(Locale.ROOT)
+                    return token && aliases.contains(token)
+                } catch (Exception ignored) {
+                    return false
+                }
+            }
+        } as List
+        if (!matchingItems) return [found: false, value: null]
+
+        List<String> displayValues = matchingItems.collect { item ->
+            try { return item.getString("newstring") as String }
+            catch (Exception ignored) { return null }
+        }.findAll { it != null }.collect { it.trim() }.unique()
+        if (displayValues) {
+            List<String> nonEmptyDisplayValues = displayValues.findAll { it }
+            return [found: true,
+                    value: nonEmptyDisplayValues ? nonEmptyDisplayValues.join(",") : ""]
+        }
+
+        List<String> storedValues = matchingItems.collect { item ->
+            try { return item.getString("newvalue") as String }
+            catch (Exception ignored) { return null }
+        }.findAll { it != null }.collect { it.trim() }.unique()
+        return [found: true, value: storedValues ? storedValues.join(",") : null]
+    }
+
     private static boolean fieldChanged(Set<String> changedFields, CustomField field) {
         if (!field) return false
         Set<String> aliases = [field.id?.toLowerCase(Locale.ROOT),
@@ -261,12 +327,22 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         return changedFields.any { aliases.contains(it) }
     }
 
+    private static boolean systemFieldChanged(Set<String> changedFields, String... aliases) {
+        Set<String> normalizedAliases = aliases.findAll { it }
+                .collect { it.trim().toLowerCase(Locale.ROOT) } as Set<String>
+        return changedFields.any { normalizedAliases.contains(it) }
+    }
+
     private String selectValue(Issue issue) {
         def raw = issue?.getCustomFieldValue(cfProjectInformation)
         if (!raw) return ""
         if (raw instanceof Collection) {
-            Option first = raw.find { it instanceof Option } as Option
-            return first?.value?.trim() ?: ""
+            List<Option> values = raw.findAll { it instanceof Option } as List<Option>
+            if (values.size() > 1) {
+                throw new IllegalStateException(
+                        "${issue.key}: Project Information contains ${values.size()} values; exactly one is supported")
+            }
+            return values ? values.first().value?.trim() ?: "" : ""
         }
         if (raw instanceof Option) return raw.value?.trim() ?: ""
         return raw.toString()?.trim() ?: ""
@@ -294,6 +370,27 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         }
     }
 
+    private Option findActiveOption(Issue issue, String value) {
+        def config = cfProjectInformation.getRelevantConfig(issue)
+        if (!config) return null
+        List<Option> matches = optionsManager.getOptions(config)?.findAll {
+            normalize(it?.value?.toString()) == normalize(value)
+        }?.findAll { !isDisabledOption(it) } as List<Option>
+        if (matches?.size() > 1) {
+            throw new IllegalStateException(
+                    "${issue.key}: multiple active PI options named '${value}' exist in the field context")
+        }
+        return matches ? matches.first() : null
+    }
+
+    private static boolean isDisabledOption(Option option) {
+        try { return option?.disabled as boolean }
+        catch (Exception ignored) {
+            try { return option?.isDisabled() as boolean }
+            catch (Exception ignoredAgain) { return false }
+        }
+    }
+
     private String validateConfiguration() {
         List<String> missing = []
         if (!cfProjectInformation) missing << CF_PROJECT_INFORMATION_N
@@ -303,12 +400,10 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         if (ENABLE_OLD_PROJECT_INFORMATION_SYNC && !cfOldProjectInformation) missing << CF_OLD_PROJECT_INFORMATION
         if (!cfParentLink) missing << CF_PARENT_LINK
         if (!cfEpicLink) missing << CF_EPIC_LINK
+        if (!clusterLockService) missing << "ClusterLockService"
+        if (!transactionTemplate) missing << "TransactionTemplate"
         return missing ? "missing custom fields: ${missing.join(', ')}" : null
     }
-
-    /*private static boolean isInitiative(Issue issue) {
-        issue?.issueType?.name == ISSUE_TYPE_INITIATIVE
-    }*/
 
     private static String normalize(String value) {
         value == null ? "" : value.trim()

@@ -33,6 +33,23 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
     private final Set<Long> resolvedParents = [] as Set<Long>
 
     void run() {
+        try {
+            boolean executed = tryWithNamedLock("${LOCK_NAMESPACE}-job") {
+                runExclusive()
+            }
+            if (!executed) log.info("PI incremental job skipped because another cluster node is running it")
+        } catch (Exception e) {
+            log.error("PI incremental job could not acquire or execute its cluster-wide run: ${e.message}", e)
+            sendErrorMail(0, 0, 0, 0,
+                    [[root: "JOB", issue: "", error: e.message ?: e.class.name]])
+        }
+    }
+
+    private void runExclusive() {
+        // ScriptRunner may reuse the job instance; hierarchy data is valid only for one execution.
+        parentCache.clear()
+        resolvedParents.clear()
+
         List<Map> errors = []
         int rootsFound = 0
         int rootsCompleted = 0
@@ -48,6 +65,8 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
             return
         }
 
+        recoverAbandonedClaims(bot, errors)
+
         List<Issue> roots
         try {
             roots = searchAll(bot, "cf[${numericId(CF_PI_SYNC_REQUIRED)}] ~ \\\"true\\\"")
@@ -61,38 +80,59 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         }
 
         roots.each { Issue rootHit ->
-            MutableIssue root = issueManager.getIssueObject(rootHit.id) as MutableIssue
-            if (!root || !"true".equalsIgnoreCase(textValue(root, cfPiSyncRequired).trim())) return
-
+            String rootKey = rootHit.key
             try {
-                setQueueState(root, "PROCESSING")
-                // Authority is the value and override already calculated by the update listener.
-                String value = selectValue(root)
-                String override = textValue(root, cfOverride).trim()
-                if (value && !override) {
-                    throw new IllegalStateException("Root has value '${value}' but no Override Key")
-                }
+                Map claim = withIssueLock(rootHit.id) {
+                    MutableIssue latest = issueManager.getIssueObject(rootHit.id) as MutableIssue
+                    if (!latest || !"true".equalsIgnoreCase(
+                            textValue(latest, cfPiSyncRequired).trim())) {
+                        return [claimed: false]
+                    }
 
+                    setQueueState(latest, "PROCESSING")
+                    String claimedValue = selectValue(latest)
+                    String claimedOverride = textValue(latest, cfOverride).trim()
+                    if ((claimedValue && !claimedOverride) || (!claimedValue && claimedOverride)) {
+                        throw new IllegalStateException(
+                                "Root has inconsistent value/Override Key: " +
+                                        "value='${claimedValue}', override='${claimedOverride}'")
+                    }
+                    return [claimed : true,
+                            root    : latest,
+                            value   : claimedValue,
+                            override: claimedOverride]
+                }
+                if (!(claim.claimed as boolean)) return
+
+                MutableIssue root = claim.root as MutableIssue
+                String value = claim.value as String
+                String override = claim.override as String
                 Set<Long> visited = [] as Set<Long>
                 Map result = distribute(root, value, override, bot, visited, errors)
                 visitedCount += visited.size()
                 updatedCount += result.updated as int
                 if (!(result.failed as boolean)) {
-                    // Clear only if nobody queued a newer change while this root was processing.
-                    MutableIssue latest = issueManager.getIssueObject(root.id) as MutableIssue
-                    if (latest && "PROCESSING".equalsIgnoreCase(textValue(latest, cfPiSyncRequired).trim())) {
-                        setQueueState(latest, null)
+                    boolean cleared = withIssueLock(root.id) {
+                        MutableIssue latest = issueManager.getIssueObject(root.id) as MutableIssue
+                        if (latest && "PROCESSING".equalsIgnoreCase(
+                                textValue(latest, cfPiSyncRequired).trim())) {
+                            setQueueState(latest, null)
+                            return true
+                        }
+                        return false
+                    }
+                    if (cleared) {
                         rootsCompleted++
                     } else {
-                        log.info("${root.key}: queue was changed during processing; retained for next run")
+                        log.info("${root.key}: queue changed during processing; retained for next run")
                     }
                 } else {
                     resetToTrueIfStillProcessing(root.id)
                 }
             } catch (Exception e) {
-                errors << [root: root.key, issue: root.key, error: e.message ?: e.class.name]
-                resetToTrueIfStillProcessing(root.id)
-                log.error("PI incremental synchronization failed for ${root.key}: ${e.message}", e)
+                errors << [root: rootKey, issue: rootKey, error: e.message ?: e.class.name]
+                resetToTrueIfStillProcessing(rootHit.id)
+                log.error("PI incremental synchronization failed for ${rootKey}: ${e.message}", e)
             }
         }
 
@@ -101,42 +141,75 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         if (errors) sendErrorMail(rootsFound, rootsCompleted, visitedCount, updatedCount, errors)
     }
 
+    private void recoverAbandonedClaims(ApplicationUser bot, List<Map> errors) {
+        List<Issue> abandoned = searchAll(
+                bot, "cf[${numericId(CF_PI_SYNC_REQUIRED)}] ~ \"PROCESSING\"")
+                .findAll { "PROCESSING".equalsIgnoreCase(
+                        textValue(it, cfPiSyncRequired).trim()) }
+
+        abandoned.each { Issue hit ->
+            try {
+                withIssueLock(hit.id) {
+                    MutableIssue latest = issueManager.getIssueObject(hit.id) as MutableIssue
+                    if (latest && "PROCESSING".equalsIgnoreCase(
+                            textValue(latest, cfPiSyncRequired).trim())) {
+                        setQueueState(latest, "true")
+                        log.warn("${latest.key}: recovered abandoned PROCESSING queue state")
+                    }
+                    return null
+                }
+            } catch (Exception e) {
+                errors << [root: hit.key, issue: hit.key,
+                           error: "Could not recover PROCESSING state: ${e.message ?: e.class.name}"]
+            }
+        }
+    }
+
     private Map distribute(MutableIssue root, String value, String override,
                            ApplicationUser bot, Set<Long> visited, List<Map> errors) {
         int updated = 0
         boolean failed = false
         visited.add(root.id)
-        List<Issue> frontier = findDirectChildren(root, bot)
+        List<Issue> frontier = findDirectChildren([root], bot)
         int depth = 0
 
         while (frontier && depth++ < MAX_HIERARCHY_DEPTH) {
-            List<Issue> next = []
+            List<Issue> expandableParents = []
             frontier.sort { it.key }.each { Issue child ->
                 if (!child || !visited.add(child.id)) return
 
-                String childOverride = textValue(child, cfOverride).trim()
-                if (childOverride == child.key) {
+                Map childResult = withIssueLock(child.id) {
+                    MutableIssue mutableChild = issueManager.getIssueObject(child.id) as MutableIssue
+                    if (!mutableChild) return [status: "MISSING"]
+
+                    String childOverride = textValue(mutableChild, cfOverride).trim()
+                    String childValue = selectValue(mutableChild)
+                    if (childOverride == mutableChild.key && childValue) {
+                        return [status: "BOUNDARY", issue: mutableChild]
+                    }
+
+                    return [status: applyValues(mutableChild, value, override),
+                            issue : mutableChild]
+                }
+
+                if (childResult.status == "BOUNDARY") {
                     log.debug("Boundary ${child.key}: independent override root; subtree skipped")
                     return
                 }
-
-                MutableIssue mutableChild = issueManager.getIssueObject(child.id) as MutableIssue
-                if (!mutableChild) {
+                if (childResult.status == "MISSING") {
                     failed = true
                     errors << [root: root.key, issue: child.key, error: "Cannot reload descendant"]
                     return
                 }
-
-                String result = applyValues(mutableChild, value, override)
-                if (result == "FAILED") {
+                if (childResult.status == "FAILED") {
                     failed = true
                     errors << [root: root.key, issue: child.key, error: "Values could not be synchronized"]
                     return
                 }
-                if (result == "UPDATED") updated++
-                next.addAll(findDirectChildren(mutableChild, bot))
+                if (childResult.status == "UPDATED") updated++
+                expandableParents << (childResult.issue as Issue)
             }
-            frontier = next
+            frontier = findDirectChildren(expandableParents, bot)
         }
         if (frontier) {
             failed = true
@@ -164,22 +237,26 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         boolean overrideChanged = normalize(currentOverride) != normalize(targetOverride)
         if (!piChanged && !textChanged && !overrideChanged) return "UNCHANGED"
 
-        DefaultIssueChangeHolder holder = new DefaultIssueChangeHolder()
         try {
-            if (piChanged) {
-                Collection<Option> oldOptions = currentRaw instanceof Collection
-                        ? currentRaw as Collection<Option> : []
-                Collection<Option> newOptions = targetOption ? [targetOption] : []
-                cfProjectInformation.updateValue(null, issue, new ModifiedValue(oldOptions, newOptions), holder)
-                issue.setCustomFieldValue(cfProjectInformation, newOptions)
-            }
-            if (textChanged) {
-                updateText(cfTextMirror, issue, currentText, target, holder)
-                issue.setCustomFieldValue(cfTextMirror, target ?: null)
-            }
-            if (overrideChanged) {
-                updateText(cfOverride, issue, currentOverride, targetOverride, holder)
-                issue.setCustomFieldValue(cfOverride, targetOverride ?: null)
+            inTransaction {
+                DefaultIssueChangeHolder holder = new DefaultIssueChangeHolder()
+                if (piChanged) {
+                    Collection<Option> oldOptions = currentRaw instanceof Collection
+                            ? currentRaw as Collection<Option> : []
+                    Collection<Option> newOptions = targetOption ? [targetOption] : []
+                    cfProjectInformation.updateValue(null, issue,
+                            new ModifiedValue(oldOptions, newOptions), holder)
+                    issue.setCustomFieldValue(cfProjectInformation, newOptions)
+                }
+                if (textChanged) {
+                    updateText(cfTextMirror, issue, currentText, target, holder)
+                    issue.setCustomFieldValue(cfTextMirror, target ?: null)
+                }
+                if (overrideChanged) {
+                    updateText(cfOverride, issue, currentOverride, targetOverride, holder)
+                    issue.setCustomFieldValue(cfOverride, targetOverride ?: null)
+                }
+                return null
             }
             indexingService.reIndex(issue)
             return "UPDATED"
@@ -189,14 +266,24 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         }
     }
 
-    private List<Issue> findDirectChildren(Issue parent, ApplicationUser user) {
-        String key = parent.key
-        String jql = "parent = ${key} OR cf[${numericId(CF_EPIC_LINK)}] = ${key} " +
-                "OR cf[${numericId(CF_PARENT_LINK)}] = ${key}"
-        List<Issue> candidates = searchAll(user, jql)
+    private List<Issue> findDirectChildren(Collection<Issue> parents, ApplicationUser user) {
+        if (!parents) return []
+        Map<Long, Issue> expectedParents = parents.findAll { it?.id }
+                .collectEntries { [(it.id): it] }
         Map<Long, Issue> children = [:]
-        candidates.each { Issue candidate ->
-            if (candidate && getParent(candidate)?.id == parent.id) children[candidate.id] = candidate
+
+        // Keep clauses bounded while reducing traversal from one JQL per issue to one JQL per level/chunk.
+        expectedParents.values().toList().collate(100).each { List<Issue> parentChunk ->
+            String keys = parentChunk.collect { it.key }.join(",")
+            String jql = "parent in (${keys}) OR " +
+                    "cf[${numericId(CF_EPIC_LINK)}] in (${keys}) OR " +
+                    "cf[${numericId(CF_PARENT_LINK)}] in (${keys})"
+            searchAll(user, jql).each { Issue candidate ->
+                Issue actualParent = candidate ? getParent(candidate) : null
+                if (actualParent && expectedParents.containsKey(actualParent.id)) {
+                    children[candidate.id] = candidate
+                }
+            }
         }
         return children.values() as List<Issue>
     }
@@ -209,7 +296,7 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         while (true) {
             PagerFilter pager = new PagerFilter(SEARCH_BATCH_SIZE)
             pager.start = start
-            def hits = searchService.search(user, parsed.query, pager).results
+            def hits = searchService.searchOverrideSecurity(user, parsed.query, pager).results
             if (!hits) break
             hits.each { hit ->
                 Issue issue = issueManager.getIssueObject(hit.id)
@@ -226,7 +313,7 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         if (resolvedParents.contains(issue.id)) return parentCache[issue.id]
         Issue parent = null
         try {
-            if (issue.isSubTask()) parent = issue.parentObject
+            if (issue.parentObject) parent = issue.parentObject
             else {
                 parent = resolveIssue(issue.getCustomFieldValue(cfEpicLink))
                 if (!parent) parent = resolveIssue(issue.getCustomFieldValue(cfParentLink))
@@ -254,18 +341,26 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
     private Option findActiveOption(Issue issue, String value) {
         def config = cfProjectInformation.getRelevantConfig(issue)
         if (!config) return null
-        Option option = optionsManager.getOptions(config)?.find {
+        List<Option> matches = optionsManager.getOptions(config)?.findAll {
             normalize(it?.value?.toString()) == normalize(value)
+        }?.findAll { !isDisabledOption(it) } as List<Option>
+        if (matches?.size() > 1) {
+            throw new IllegalStateException(
+                    "${issue.key}: multiple active PI options named '${value}' exist in the field context")
         }
-        return option && isDisabledOption(option) ? null : option
+        return matches ? matches.first() : null
     }
 
     private String selectValue(Issue issue) {
         def raw = issue?.getCustomFieldValue(cfProjectInformation)
         if (!raw) return ""
         if (raw instanceof Collection) {
-            Option first = raw.find { it instanceof Option } as Option
-            return first?.value?.trim() ?: ""
+            List<Option> values = raw.findAll { it instanceof Option } as List<Option>
+            if (values.size() > 1) {
+                throw new IllegalStateException(
+                        "${issue.key}: Project Information contains ${values.size()} values; exactly one is supported")
+            }
+            return values ? values.first().value?.trim() ?: "" : ""
         }
         if (raw instanceof Option) return raw.value?.trim() ?: ""
         return raw.toString()?.trim() ?: ""
@@ -273,16 +368,23 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
 
     private void setQueueState(MutableIssue issue, String value) {
         String current = textValue(issue, cfPiSyncRequired)
-        DefaultIssueChangeHolder holder = new DefaultIssueChangeHolder()
-        updateText(cfPiSyncRequired, issue, current, value ?: "", holder)
-        issue.setCustomFieldValue(cfPiSyncRequired, value ?: null)
+        inTransaction {
+            DefaultIssueChangeHolder holder = new DefaultIssueChangeHolder()
+            updateText(cfPiSyncRequired, issue, current, value ?: "", holder)
+            issue.setCustomFieldValue(cfPiSyncRequired, value ?: null)
+            return null
+        }
         indexingService.reIndex(issue)
     }
 
     private void resetToTrueIfStillProcessing(Long issueId) {
-        MutableIssue latest = issueManager.getIssueObject(issueId) as MutableIssue
-        if (latest && "PROCESSING".equalsIgnoreCase(textValue(latest, cfPiSyncRequired).trim())) {
-            setQueueState(latest, "true")
+        withIssueLock(issueId) {
+            MutableIssue latest = issueManager.getIssueObject(issueId) as MutableIssue
+            if (latest && "PROCESSING".equalsIgnoreCase(
+                    textValue(latest, cfPiSyncRequired).trim())) {
+                setQueueState(latest, "true")
+            }
+            return null
         }
     }
 
@@ -329,6 +431,8 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         if (!cfPiSyncRequired) missing << CF_PI_SYNC_REQUIRED
         if (!cfParentLink) missing << CF_PARENT_LINK
         if (!cfEpicLink) missing << CF_EPIC_LINK
+        if (!clusterLockService) missing << "ClusterLockService"
+        if (!transactionTemplate) missing << "TransactionTemplate"
         return missing ? "Missing custom fields: ${missing.join(', ')}" : null
     }
 
