@@ -1,7 +1,6 @@
 package project_information
 
 import com.atlassian.jira.issue.Issue
-import com.atlassian.jira.issue.MutableIssue
 import com.atlassian.jira.user.ApplicationUser
 
 /**
@@ -15,9 +14,11 @@ import com.atlassian.jira.user.ApplicationUser
  * rather than the broken issue matters: queueing a wrongly valued descendant would propagate the
  * wrong value further down.
  *
- * The flat scan cannot see an issue whose four fields are all empty, so authorities are additionally
- * checked against their direct children. A break anywhere in a subtree always shows up as an empty
- * or divergent direct child of a correct issue.
+ * The flat scan cannot see an issue whose four fields are all empty, so the direct children of every
+ * issue that carries a value are checked as well. Because a correctly inheriting issue carries a
+ * value too, the check reaches down level by level and finds the topmost broken issue in a subtree,
+ * which is all the repair needs: queueing the governing authority makes the incremental job rewrite
+ * the whole subtree underneath it.
  *
  * @author chabrecek.anton
  * Created on 26. 8. 2026.
@@ -32,7 +33,9 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
     void run() {
         List<Map> findings = []
         Set<Long> repairTargets = [] as Set<Long>
-        List<Long> authorityIds = []
+        // Every issue that carries a value; their children are the next level of the deep check.
+        List<Long> valuedIds = []
+        Set<Long> scanned = [] as Set<Long>
         int checked = 0
         int valid = 0
         int pending = 0
@@ -51,6 +54,7 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
                 Issue issue = issueManager.getIssueObject(id)
                 if (!issue) return
                 checked++
+                scanned << id
                 try {
                     String queue = normalize(textValue(issue, cfPiSyncRequired))
                     if (QUEUE_PENDING.equalsIgnoreCase(queue)) pending++
@@ -63,9 +67,7 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
 
                     if (auditIssue(issue, findings, repairTargets)) valid++
 
-                    if (normalize(textValue(issue, cfOverride)) == issue.key && selectValue(issue)) {
-                        authorityIds << id
-                    }
+                    if (selectValue(issue)) valuedIds << id
                 } catch (Exception issueError) {
                     findings << finding(issue, "ISSUE_AUDIT_FAILURE", "", "",
                             issueError.message ?: issueError.class.name)
@@ -74,7 +76,7 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
             }
 
             if (DEEP_CHECK_ENABLED) {
-                auditAuthorityChildren(authorityIds, bot, findings, repairTargets)
+                auditInheritedChildren(valuedIds, scanned, bot, findings, repairTargets)
             }
             if (REPAIR_ENABLED && repairTargets) {
                 queueRepairs(repairTargets, findings)
@@ -163,30 +165,47 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
         return null
     }
 
-    /** Detects subtrees the flat scan cannot see, because every field on them is empty. */
-    private void auditAuthorityChildren(List<Long> authorityIds, ApplicationUser bot,
+    /**
+     * Detects issues the flat scan cannot see, because all four of their fields are empty.
+     *
+     * The check walks the direct children of every issue that carries a value, not only of the
+     * authorities. That distinction matters: with A (authority) -> B (correctly inherited) -> C
+     * (entirely empty), checking authorities alone stops at B and never reaches C. Because B carries
+     * a value it is itself a valued parent, so C is examined on the next level.
+     *
+     * Issues already covered by the flat scan are skipped here; they were checked in full.
+     */
+    private void auditInheritedChildren(List<Long> valuedIds, Set<Long> scanned, ApplicationUser bot,
                                         List<Map> findings, Set<Long> repairTargets) {
-        authorityIds.collate(100).each { List<Long> chunk ->
-            List<Issue> authorities = chunk.collect { issueManager.getIssueObject(it) }.findAll { it }
-            if (!authorities) return
-            Map<Long, Issue> byId = authorities.collectEntries { [(it.id): it] }
+        valuedIds.collate(100).each { List<Long> chunk ->
+            List<Issue> parents = chunk.collect { issueManager.getIssueObject(it) }.findAll { it }
+            if (!parents) return
+            Map<Long, Issue> byId = parents.collectEntries { [(it.id): it] }
 
-            findDirectChildren(authorities, bot).each { Issue child ->
-                Issue parent = getParent(child)
-                Issue authority = parent ? byId[parent.id] : null
-                if (!authority) return
+            findDirectChildren(parents, bot).each { Issue child ->
+                if (scanned.contains(child.id)) return
+
+                Issue actualParent = getParent(child)
+                Issue parent = actualParent ? byId[actualParent.id] : null
+                if (!parent) return
 
                 String childValue = selectValue(child)
                 String childOverride = normalize(textValue(child, cfOverride))
                 if (childOverride == child.key && childValue) return  // legitimate boundary
 
-                String expectedValue = selectValue(authority)
-                String expectedOverride = normalize(textValue(authority, cfOverride)) ?: authority.key
+                // The parent carries a value, so the parent's own authority governs the child too.
+                String expectedValue = selectValue(parent)
+                String expectedOverride = normalize(textValue(parent, cfOverride)) ?: parent.key
                 if (childValue == expectedValue && childOverride == expectedOverride) return
 
-                findings << finding(child, "MISSING_INHERITANCE", childValue, expectedValue,
-                        "Direct child of authority ${authority.key} does not carry the inherited value")
-                repairTargets << authority.id
+                findings << finding(child, "INHERITANCE_BROKEN", childValue, expectedValue,
+                        "Child of ${parent.key} does not carry the value inherited " +
+                                "from authority ${expectedOverride}")
+
+                Issue authority = expectedOverride ? issueManager.getIssueObject(expectedOverride) : null
+                if (authority) repairTargets << authority.id
+                else findings << finding(child, "REPAIR_NOT_POSSIBLE", childValue, expectedOverride,
+                        "The governing authority does not exist; this needs a manual decision")
             }
         }
     }
@@ -195,17 +214,8 @@ class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
     private void queueRepairs(Set<Long> targets, List<Map> findings) {
         targets.each { Long id ->
             try {
-                withIssueLock(id) {
-                    MutableIssue issue = issueManager.getIssueObject(id) as MutableIssue
-                    if (!issue) return null
-                    String state = normalize(textValue(issue, cfPiSyncRequired))
-                    // Do not disturb an entry the incremental job is already working on.
-                    if (QUEUE_PROCESSING.equalsIgnoreCase(state) || QUEUE_PENDING.equalsIgnoreCase(state)) {
-                        return null
-                    }
-                    setQueueState(issue, QUEUE_PENDING)
-                    log.info("${issue.key}: queued for repair by the incremental job")
-                    return null
+                if (queueForSync(id)) {
+                    log.info("${issueManager.getIssueObject(id)?.key ?: id}: queued for repair by the incremental job")
                 }
             } catch (Exception e) {
                 findings << [issue: "id=${id}", type: "REPAIR_FAILED", value: "", actual: "",

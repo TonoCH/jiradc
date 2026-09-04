@@ -82,6 +82,7 @@ class ProjectInformationConfig {
     public final def issueManager = ComponentAccessor.issueManager
     public final def optionsManager = ComponentAccessor.optionsManager
     public final def userManager = ComponentAccessor.userManager
+    public final def subTaskManager = ComponentAccessor.subTaskManager
     public final SearchService searchService = ComponentAccessor.getComponent(SearchService)
     public final IssueIndexingService indexingService = ComponentAccessor.getComponent(IssueIndexingService)
     public final MailServerManager mailServerManager = ComponentAccessor.getComponent(MailServerManager)
@@ -124,6 +125,7 @@ class ProjectInformationConfig {
         if (!clusterLockService) problems << "ClusterLockService"
         if (!transactionTemplate) problems << "TransactionTemplate"
         if (!indexingService) problems << "IssueIndexingService"
+        if (!subTaskManager) problems << "SubTaskManager"
         return problems ? "misconfigured: ${problems.join('; ')}" : null
     }
 
@@ -152,12 +154,29 @@ class ProjectInformationConfig {
         if (parentCache.containsKey(issue.id)) return parentCache[issue.id]
 
         Issue parent = issue.parentObject
+        if (!parent) parent = resolveSubTaskParent(issue)
         if (!parent && cfEpicLink) parent = resolveIssue(issue.getCustomFieldValue(cfEpicLink))
         if (!parent && cfParentLink) parent = resolveIssue(issue.getCustomFieldValue(cfParentLink))
 
         if (parentCache.size() >= HIERARCHY_CACHE_LIMIT) parentCache.clear()
         parentCache[issue.id] = parent
         return parent
+    }
+
+    /**
+     * During Issue Created processing parentObject can still be null on an issue whose type is
+     * Sub-task, so the sub-task relation is resolved explicitly before the link fields are tried.
+     * Without this the create listener reports "no parent" and inheritance never happens.
+     */
+    private Issue resolveSubTaskParent(Issue issue) {
+        if (!subTaskManager) return null
+        try {
+            Long parentId = subTaskManager.getParentIssueId(issue) as Long
+            return parentId ? issueManager.getIssueObject(parentId) : null
+        } catch (Exception e) {
+            log.debug("Cannot resolve the sub-task parent of ${issue.key}: ${e.message}")
+            return null
+        }
     }
 
     protected void clearHierarchyCache() {
@@ -308,6 +327,28 @@ class ProjectInformationConfig {
         } catch (Exception e) {
             log.error("${issue.key}: Project Information write failed: ${e.message}", e)
             return "FAILED"
+        }
+    }
+
+    /**
+     * Marks an issue as a source for the incremental job, without disturbing an entry that is
+     * already pending or currently being processed.
+     *
+     * Only an authority may be queued. Queueing a descendant instead would make the job treat that
+     * descendant's own (possibly empty) value as the truth and propagate it downwards, and the
+     * original problem would never be retried.
+     *
+     * Call this only when no other issue lock is held, so two issue locks are never nested.
+     */
+    protected boolean queueForSync(Long issueId) {
+        if (!issueId) return false
+        return withIssueLock(issueId) {
+            MutableIssue latest = issueManager.getIssueObject(issueId) as MutableIssue
+            if (!latest) return false
+            String state = normalize(textValue(latest, cfPiSyncRequired))
+            if (QUEUE_PENDING.equalsIgnoreCase(state) || QUEUE_PROCESSING.equalsIgnoreCase(state)) return false
+            setQueueState(latest, QUEUE_PENDING)
+            return true
         }
     }
 

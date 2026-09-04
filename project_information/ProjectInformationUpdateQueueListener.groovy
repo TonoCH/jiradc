@@ -28,7 +28,8 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         if (!inScope(eventIssue)) return
 
         // Internal writes never produce a change item, so a synchronization write cannot queue again.
-        if (!projectInformationChanged(event)) return
+        Map change = changedProjectInformation(event)
+        if (!(change.detected as boolean)) return
 
         String configurationError = validateConfiguration()
         if (configurationError) {
@@ -41,9 +42,14 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
                 MutableIssue source = issueManager.getIssueObject(eventIssue.id) as MutableIssue
                 if (!source) throw new IllegalStateException("Cannot reload ${eventIssue.key}")
 
-                // The issue was reloaded after the change, so its own field is the authoritative
-                // post-change value. The changelog is used for detection only.
-                String value = selectValue(source)
+                // The value comes from the change item, not from the reloaded issue. The incremental
+                // job can win the race for this issue's lock and write an inherited value back
+                // between the user's commit and this listener; a reload would then report the job's
+                // value and the user's edit would be lost for good. The reload is only a fallback
+                // for a change item that carries no readable value.
+                String value = (change.valueKnown as boolean)
+                        ? (change.value as String)
+                        : selectValue(source)
                 Map authority = value
                         ? [value: value, overrideKey: source.key]
                         : resolveEffectiveAuthority(getParent(source))
@@ -62,22 +68,46 @@ class ProjectInformationUpdateQueueListener extends ProjectInformationConfig {
         }
     }
 
-    /** True only when Project Information N itself appears in the event changelog. */
-    private boolean projectInformationChanged(IssueEvent event) {
-        if (!cfProjectInformation) return false
+    /**
+     * The Project Information change carried by this event.
+     *
+     * detected    - Project Information N appears in the changelog at all
+     * valueKnown  - the change item carries a value this listener can act on
+     * value       - the label the user selected, or "" when the field was cleared
+     *
+     * Project Information holds at most one option, so exactly one change item is expected and its
+     * newstring is taken as-is. Nothing is joined across items, so an option label containing a
+     * comma is preserved.
+     */
+    private Map changedProjectInformation(IssueEvent event) {
+        Map none = [detected: false, valueKnown: false, value: null]
+        if (!cfProjectInformation) return none
+
         Set<String> aliases = [cfProjectInformation.id?.toLowerCase(Locale.ROOT),
                                cfProjectInformation.name?.toLowerCase(Locale.ROOT),
                                cfProjectInformation.idAsLong?.toString()].findAll { it } as Set<String>
 
-        return event.changeLog?.getRelated("ChildChangeItem")?.any { item ->
+        List items = event.changeLog?.getRelated("ChildChangeItem")?.findAll { item ->
             ["field", "fieldid"].any { String property ->
-                try {
-                    String token = item.getString(property)?.trim()?.toLowerCase(Locale.ROOT)
-                    return token && aliases.contains(token)
-                } catch (Exception ignored) {
-                    return false
-                }
+                String token = stringOf(item, property)?.trim()?.toLowerCase(Locale.ROOT)
+                return token && aliases.contains(token)
             }
-        } ?: false
+        } as List
+        if (!items) return none
+
+        def item = items.last()
+        String display = stringOf(item, "newstring")
+        if (display != null) return [detected: true, valueKnown: true, value: normalize(display)]
+
+        // No display value: either the field was cleared, or only raw option IDs were recorded and
+        // the reloaded issue has to answer instead.
+        String stored = stringOf(item, "newvalue")
+        if (!normalize(stored)) return [detected: true, valueKnown: true, value: ""]
+        return [detected: true, valueKnown: false, value: null]
+    }
+
+    private static String stringOf(Object changeItem, String property) {
+        try { return changeItem.getString(property) as String }
+        catch (Exception ignored) { return null }
     }
 }

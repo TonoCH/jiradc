@@ -35,7 +35,7 @@ class ProjectInformationCreateListener extends ProjectInformationConfig {
         }
 
         try {
-            withIssueLock(created.id) {
+            String authorityToRequeue = withIssueLock(created.id) {
                 MutableIssue issue = issueManager.getIssueObject(created.id) as MutableIssue
                 if (!issue) throw new IllegalStateException("Cannot reload ${created.key}")
 
@@ -65,15 +65,31 @@ class ProjectInformationCreateListener extends ProjectInformationConfig {
                 String result = applyValues(issue, authority.value as String, authority.overrideKey as String, null)
                 log.debug("${issue.key}: inherited value='${authority.value}', " +
                         "override='${authority.overrideKey}', result=${result}")
-                if (result == "FAILED") {
-                    // Leave a queue entry so the incremental job can retry instead of silently
-                    // leaving the issue with a broken invariant.
-                    setQueueState(issue, QUEUE_PENDING)
-                }
-                return null
+
+                // A failed inheritance write leaves this issue with an empty value and an empty
+                // Override Key. Queueing the issue itself would be useless: the job would treat that
+                // empty pair as consistent, propagate emptiness to its descendants and clear the
+                // entry, so the inheritance would never be retried. The authority is the correct
+                // retry root, and it is queued outside this lock so two issue locks are never held
+                // at the same time.
+                return result == "FAILED" ? (authority.overrideKey as String) : null
             }
+
+            if (authorityToRequeue) requeueAuthority(authorityToRequeue, created.key)
         } catch (Exception e) {
             log.error("PI initialization failed for ${created.key}: ${e.message}", e)
         }
+    }
+
+    private void requeueAuthority(String authorityKey, String failedIssueKey) {
+        Issue authority = issueManager.getIssueObject(authorityKey)
+        if (!authority) {
+            log.error("${failedIssueKey}: could not inherit and its authority '${authorityKey}' " +
+                    "no longer exists; the weekly audit will report this issue")
+            return
+        }
+        boolean queued = queueForSync(authority.id)
+        log.warn("${failedIssueKey}: inheritance write failed; authority ${authorityKey} " +
+                (queued ? "queued for re-propagation" : "is already queued"))
     }
 }
