@@ -1,180 +1,229 @@
 package project_information
 
-import com.atlassian.jira.bc.issue.search.SearchService
-import com.atlassian.jira.component.ComponentAccessor
 import com.atlassian.jira.issue.Issue
-import com.atlassian.jira.issue.ModifiedValue
 import com.atlassian.jira.issue.MutableIssue
-import com.atlassian.jira.issue.customfields.option.Option
-import com.atlassian.jira.issue.fields.CustomField
-import com.atlassian.jira.issue.index.IssueIndexingService
-import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
 import com.atlassian.jira.user.ApplicationUser
-import com.atlassian.jira.web.bean.PagerFilter
-import com.atlassian.mail.Email
-import com.atlassian.mail.server.MailServerManager
-import org.apache.log4j.Logger
 
 /**
- * ProjectInformationConfig
+ * ProjectInformationIncrementalSyncJob
+ *
+ * Runs every five minutes and propagates every queued source to its descendants.
+ * Sends mail only when something fails.
+ *
+ * Queue state machine, guarded by a per-issue cluster lock:
+ *
+ *   true          a listener marked this issue as a source
+ *   PROCESSING    claimed by this job
+ *   (empty)       propagated successfully
+ *   FAILED n      propagation failed n times; retried until MAX_SYNC_ATTEMPTS, then left alone
+ *
+ * If a listener sets the state back to "true" while the job is working, the job does not clear it
+ * and the item is processed again in the next run, so a concurrent user edit always wins.
  *
  * @author chabrecek.anton
  * Created on 26. 8. 2026.
-
- * Run every 5 minutes.
- * Sends mail only if an error occurs.
- * Queue race protection: true -> PROCESSING -> null.
- * If the listener changes PROCESSING back to true during processing, the job does not clear it.
  */
 class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
-    private static final Logger log = Logger.getLogger("scriptrunner.job.project-information-incremental")
-
-    private final Map<Long, Issue> parentCache = [:]
-    private final Set<Long> resolvedParents = [] as Set<Long>
 
     void run() {
         try {
-            boolean executed = tryWithNamedLock("${LOCK_NAMESPACE}-job") {
-                runExclusive()
-            }
+            boolean executed = tryWithNamedLock("${LOCK_NAMESPACE}-job") { runExclusive() }
             if (!executed) log.info("PI incremental job skipped because another cluster node is running it")
         } catch (Exception e) {
-            log.error("PI incremental job could not acquire or execute its cluster-wide run: ${e.message}", e)
-            sendErrorMail(0, 0, 0, 0,
-                    [[root: "JOB", issue: "", error: e.message ?: e.class.name]])
+            log.error("PI incremental job could not complete its run: ${e.message}", e)
+            sendErrorMail(0, 0, 0, 0, 0, [[root: "JOB", issue: "", error: e.message ?: e.class.name]])
         }
     }
 
     private void runExclusive() {
-        // ScriptRunner may reuse the job instance; hierarchy data is valid only for one execution.
-        parentCache.clear()
-        resolvedParents.clear()
+        // ScriptRunner may reuse the instance; hierarchy data is valid for one execution only.
+        clearHierarchyCache()
 
         List<Map> errors = []
         int rootsFound = 0
         int rootsCompleted = 0
+        int rootsExhausted = 0
         int visitedCount = 0
         int updatedCount = 0
 
-        String configError = validateConfiguration()
+        String configurationError = validateConfiguration()
         ApplicationUser bot = userManager.getUserByName(JIRA_BOT)
-        if (configError || !bot) {
-            String message = configError ?: "User '${JIRA_BOT}' not found"
-            errors << [root: "CONFIG", issue: "", error: message]
-            sendErrorMail(rootsFound, rootsCompleted, visitedCount, updatedCount, errors)
+        if (configurationError || !bot) {
+            String message = configurationError ?: "User '${JIRA_BOT}' not found"
+            log.error("PI incremental job cannot start: ${message}")
+            sendErrorMail(0, 0, 0, 0, 0, [[root: "CONFIG", issue: "", error: message]])
             return
         }
 
         recoverAbandonedClaims(bot, errors)
 
-        List<Issue> roots
+        List<Long> rootIds
         try {
-            roots = searchAll(bot, "cf[${numericId(CF_PI_SYNC_REQUIRED)}] ~ \\\"true\\\"")
-            roots = roots.findAll { "true".equalsIgnoreCase(textValue(it, cfPiSyncRequired).trim()) }
-                    .sort { it.key }
-            rootsFound = roots.size()
+            rootIds = searchIssueIds(bot, scopedJql(queueSearchJql()))
         } catch (Exception e) {
-            errors << [root: "SEARCH", issue: "", error: e.message ?: e.class.name]
-            sendErrorMail(rootsFound, rootsCompleted, visitedCount, updatedCount, errors)
+            log.error("PI incremental job could not read the queue: ${e.message}", e)
+            sendErrorMail(0, 0, 0, 0, 0, [[root: "SEARCH", issue: "", error: e.message ?: e.class.name]])
             return
         }
 
-        roots.each { Issue rootHit ->
-            String rootKey = rootHit.key
+        rootIds.each { Long rootId ->
+            String rootKey = null
+            // Stays -1 until the claim succeeds, so the catch block below can only advance the
+            // attempt counter with the real number of previous attempts. Resetting it there would
+            // recreate the endless five-minute retry this state machine exists to prevent.
+            int claimedAttempts = -1
             try {
-                Map claim = withIssueLock(rootHit.id) {
-                    MutableIssue latest = issueManager.getIssueObject(rootHit.id) as MutableIssue
-                    if (!latest || !"true".equalsIgnoreCase(
-                            textValue(latest, cfPiSyncRequired).trim())) {
-                        return [claimed: false]
-                    }
-
-                    setQueueState(latest, "PROCESSING")
-                    String claimedValue = selectValue(latest)
-                    String claimedOverride = textValue(latest, cfOverride).trim()
-                    if ((claimedValue && !claimedOverride) || (!claimedValue && claimedOverride)) {
-                        throw new IllegalStateException(
-                                "Root has inconsistent value/Override Key: " +
-                                        "value='${claimedValue}', override='${claimedOverride}'")
-                    }
-                    return [claimed : true,
-                            root    : latest,
-                            value   : claimedValue,
-                            override: claimedOverride]
+                Map claim = claimRoot(rootId)
+                if (!(claim.claimed as boolean)) {
+                    if (claim.exhausted as boolean) rootsExhausted++
+                    return
                 }
-                if (!(claim.claimed as boolean)) return
 
-                MutableIssue root = claim.root as MutableIssue
-                String value = claim.value as String
-                String override = claim.override as String
-                Set<Long> visited = [] as Set<Long>
-                Map result = distribute(root, value, override, bot, visited, errors)
-                visitedCount += visited.size()
-                updatedCount += result.updated as int
-                if (!(result.failed as boolean)) {
-                    boolean cleared = withIssueLock(root.id) {
-                        MutableIssue latest = issueManager.getIssueObject(root.id) as MutableIssue
-                        if (latest && "PROCESSING".equalsIgnoreCase(
-                                textValue(latest, cfPiSyncRequired).trim())) {
-                            setQueueState(latest, null)
-                            return true
-                        }
-                        return false
-                    }
-                    if (cleared) {
-                        rootsCompleted++
-                    } else {
-                        log.info("${root.key}: queue changed during processing; retained for next run")
-                    }
+                rootsFound++
+                rootKey = claim.key as String
+                claimedAttempts = claim.attempts as int
+                boolean failed
+
+                if (claim.problem) {
+                    failed = true
+                    errors << [root: rootKey, issue: rootKey, error: claim.problem]
+                    log.error("${rootKey}: not propagated: ${claim.problem}")
                 } else {
-                    resetToTrueIfStillProcessing(root.id)
+                    Set<Long> visited = [] as Set<Long>
+                    Map result = distribute(claim.root as MutableIssue, claim.value as String,
+                            claim.override as String, bot, visited, errors)
+                    visitedCount += visited.size()
+                    updatedCount += result.updated as int
+                    failed = result.failed as boolean
+                }
+
+                boolean applied = releaseClaim(rootId, failed, claimedAttempts)
+                if (!applied) {
+                    log.info("${rootKey}: queue changed during processing; retained for the next run")
+                } else if (failed) {
+                    log.warn("${rootKey}: propagation failed, " +
+                            "attempt ${claimedAttempts + 1}/${MAX_SYNC_ATTEMPTS}")
+                } else {
+                    rootsCompleted++
                 }
             } catch (Exception e) {
-                errors << [root: rootKey, issue: rootKey, error: e.message ?: e.class.name]
-                resetToTrueIfStillProcessing(rootHit.id)
-                log.error("PI incremental synchronization failed for ${rootKey}: ${e.message}", e)
+                String key = rootKey ?: "id=${rootId}"
+                errors << [root: key, issue: key, error: e.message ?: e.class.name]
+                log.error("PI incremental synchronization failed for ${key}: ${e.message}", e)
+                if (claimedAttempts >= 0) {
+                    try {
+                        releaseClaim(rootId, true, claimedAttempts)
+                    } catch (Exception releaseError) {
+                        log.error("${key}: could not release the claim: ${releaseError.message}", releaseError)
+                    }
+                }
             }
         }
 
-        log.info("PI incremental synchronization finished; rootsFound=${rootsFound}; " +
-                "rootsCompleted=${rootsCompleted}; visited=${visitedCount}; updated=${updatedCount}; errors=${errors.size()}")
-        if (errors) sendErrorMail(rootsFound, rootsCompleted, visitedCount, updatedCount, errors)
+        log.info("PI incremental synchronization finished; rootsClaimed=${rootsFound}; " +
+                "rootsCompleted=${rootsCompleted}; rootsExhausted=${rootsExhausted}; " +
+                "visited=${visitedCount}; updated=${updatedCount}; errors=${errors.size()}")
+        if (errors) {
+            sendErrorMail(rootsFound, rootsCompleted, rootsExhausted, visitedCount, updatedCount, errors)
+        }
     }
 
-    private void recoverAbandonedClaims(ApplicationUser bot, List<Map> errors) {
-        List<Issue> abandoned = searchAll(
-                bot, "cf[${numericId(CF_PI_SYNC_REQUIRED)}] ~ \"PROCESSING\"")
-                .findAll { "PROCESSING".equalsIgnoreCase(
-                        textValue(it, cfPiSyncRequired).trim()) }
+    /**
+     * Moves a claimable root from "true" or "FAILED n" to PROCESSING and snapshots its value.
+     * The snapshot is what gets propagated; a concurrent edit re-queues the issue instead.
+     *
+     * The snapshot is read before the claim is written, so a root whose own data is broken is
+     * reported through the normal failure path instead of throwing and leaving a PROCESSING entry
+     * that the next run would only have to recover.
+     */
+    private Map claimRoot(Long rootId) {
+        return withIssueLock(rootId) {
+            MutableIssue latest = issueManager.getIssueObject(rootId) as MutableIssue
+            if (!latest) return [claimed: false, exhausted: false]
 
-        abandoned.each { Issue hit ->
+            String state = normalize(textValue(latest, cfPiSyncRequired))
+            int attempts = claimableAttempts(state)
+            if (attempts < 0) return [claimed: false, exhausted: isExhausted(state)]
+
+            String value = ""
+            String override = ""
+            String problem = null
             try {
-                withIssueLock(hit.id) {
-                    MutableIssue latest = issueManager.getIssueObject(hit.id) as MutableIssue
-                    if (latest && "PROCESSING".equalsIgnoreCase(
-                            textValue(latest, cfPiSyncRequired).trim())) {
-                        setQueueState(latest, "true")
-                        log.warn("${latest.key}: recovered abandoned PROCESSING queue state")
+                value = selectValue(latest)
+                override = normalize(textValue(latest, cfOverride))
+                if ((value && !override) || (!value && override)) {
+                    problem = "Inconsistent value/Override Key pair: " +
+                            "value='${value}', override='${override}'"
+                }
+            } catch (Exception e) {
+                problem = e.message ?: e.class.name
+            }
+
+            setQueueState(latest, QUEUE_PROCESSING)
+            return [claimed: true, exhausted: false, root: latest, key: latest.key,
+                    value: value, override: override, attempts: attempts, problem: problem]
+        }
+    }
+
+    /**
+     * Writes the final queue state, but only while the claim still holds. Returns false when a
+     * listener re-queued the issue in the meantime, in which case the entry is kept for the next run.
+     */
+    private boolean releaseClaim(Long rootId, boolean failed, int attempts) {
+        return withIssueLock(rootId) {
+            MutableIssue latest = issueManager.getIssueObject(rootId) as MutableIssue
+            if (!latest) return false
+            if (!QUEUE_PROCESSING.equalsIgnoreCase(normalize(textValue(latest, cfPiSyncRequired)))) return false
+            setQueueState(latest, failed ? failedState(attempts + 1) : "")
+            return true
+        }
+    }
+
+    /** A node that died mid-run leaves PROCESSING behind; put those entries back into the queue. */
+    private void recoverAbandonedClaims(ApplicationUser bot, List<Map> errors) {
+        List<Long> abandoned
+        try {
+            abandoned = searchIssueIds(bot, scopedJql(
+                    "cf[${numericId(CF_PI_SYNC_REQUIRED)}] ~ \"${QUEUE_PROCESSING}\""))
+        } catch (Exception e) {
+            errors << [root: "RECOVERY", issue: "", error: e.message ?: e.class.name]
+            return
+        }
+
+        abandoned.each { Long id ->
+            try {
+                withIssueLock(id) {
+                    MutableIssue latest = issueManager.getIssueObject(id) as MutableIssue
+                    if (latest && QUEUE_PROCESSING.equalsIgnoreCase(
+                            normalize(textValue(latest, cfPiSyncRequired)))) {
+                        setQueueState(latest, QUEUE_PENDING)
+                        log.warn("${latest.key}: recovered an abandoned PROCESSING queue state")
                     }
                     return null
                 }
             } catch (Exception e) {
-                errors << [root: hit.key, issue: hit.key,
-                           error: "Could not recover PROCESSING state: ${e.message ?: e.class.name}"]
+                errors << [root: "RECOVERY", issue: "id=${id}",
+                           error: "Could not recover the PROCESSING state: ${e.message ?: e.class.name}"]
             }
         }
     }
 
+    /**
+     * Breadth-first walk over the descendants of a claimed root. A descendant that is its own
+     * authority is a boundary: it keeps its value and its subtree is skipped, because that subtree
+     * is governed by the boundary's own queue entry.
+     */
     private Map distribute(MutableIssue root, String value, String override,
                            ApplicationUser bot, Set<Long> visited, List<Map> errors) {
         int updated = 0
         boolean failed = false
         visited.add(root.id)
+
         List<Issue> frontier = findDirectChildren([root], bot)
         int depth = 0
 
         while (frontier && depth++ < MAX_HIERARCHY_DEPTH) {
-            List<Issue> expandableParents = []
+            List<Issue> expandable = []
             frontier.sort { it.key }.each { Issue child ->
                 if (!child || !visited.add(child.id)) return
 
@@ -182,35 +231,34 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
                     MutableIssue mutableChild = issueManager.getIssueObject(child.id) as MutableIssue
                     if (!mutableChild) return [status: "MISSING"]
 
-                    String childOverride = textValue(mutableChild, cfOverride).trim()
-                    String childValue = selectValue(mutableChild)
-                    if (childOverride == mutableChild.key && childValue) {
+                    String childOverride = normalize(textValue(mutableChild, cfOverride))
+                    if (childOverride == mutableChild.key && selectValue(mutableChild)) {
                         return [status: "BOUNDARY", issue: mutableChild]
                     }
-
-                    return [status: applyValues(mutableChild, value, override),
-                            issue : mutableChild]
+                    return [status: applyValues(mutableChild, value, override, null), issue: mutableChild]
                 }
 
-                if (childResult.status == "BOUNDARY") {
-                    log.debug("Boundary ${child.key}: independent override root; subtree skipped")
-                    return
+                switch (childResult.status) {
+                    case "BOUNDARY":
+                        log.debug("${child.key}: independent override root; subtree skipped")
+                        return
+                    case "MISSING":
+                        failed = true
+                        errors << [root: root.key, issue: child.key, error: "Cannot reload the descendant"]
+                        return
+                    case "FAILED":
+                        failed = true
+                        errors << [root: root.key, issue: child.key, error: "Values could not be synchronized"]
+                        return
+                    case "UPDATED":
+                        updated++
+                        break
                 }
-                if (childResult.status == "MISSING") {
-                    failed = true
-                    errors << [root: root.key, issue: child.key, error: "Cannot reload descendant"]
-                    return
-                }
-                if (childResult.status == "FAILED") {
-                    failed = true
-                    errors << [root: root.key, issue: child.key, error: "Values could not be synchronized"]
-                    return
-                }
-                if (childResult.status == "UPDATED") updated++
-                expandableParents << (childResult.issue as Issue)
+                expandable << (childResult.issue as Issue)
             }
-            frontier = findDirectChildren(expandableParents, bot)
+            frontier = findDirectChildren(expandable, bot)
         }
+
         if (frontier) {
             failed = true
             errors << [root: root.key, issue: root.key,
@@ -219,237 +267,17 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         return [updated: updated, failed: failed]
     }
 
-    private String applyValues(MutableIssue issue, String targetValue, String targetOverrideKey) {
-        String target = targetValue?.trim() ?: ""
-        String targetOverride = targetOverrideKey?.trim() ?: ""
-        Option targetOption = target ? findActiveOption(issue, target) : null
-        if (target && !targetOption) {
-            log.error("${issue.key}: active option '${target}' not found in relevant context")
-            return "FAILED"
-        }
-
-        Object currentRaw = issue.getCustomFieldValue(cfProjectInformation)
-        String currentValue = selectValue(issue)
-        String currentText = textValue(issue, cfTextMirror)
-        String currentOverride = textValue(issue, cfOverride).trim()
-        boolean piChanged = normalize(currentValue) != normalize(target)
-        boolean textChanged = normalize(currentText) != normalize(target)
-        boolean overrideChanged = normalize(currentOverride) != normalize(targetOverride)
-        if (!piChanged && !textChanged && !overrideChanged) return "UNCHANGED"
-
-        try {
-            inTransaction {
-                DefaultIssueChangeHolder holder = new DefaultIssueChangeHolder()
-                if (piChanged) {
-                    Collection<Option> oldOptions = currentRaw instanceof Collection
-                            ? currentRaw as Collection<Option> : []
-                    Collection<Option> newOptions = targetOption ? [targetOption] : []
-                    cfProjectInformation.updateValue(null, issue,
-                            new ModifiedValue(oldOptions, newOptions), holder)
-                    issue.setCustomFieldValue(cfProjectInformation, newOptions)
-                }
-                if (textChanged) {
-                    updateText(cfTextMirror, issue, currentText, target, holder)
-                    issue.setCustomFieldValue(cfTextMirror, target ?: null)
-                }
-                if (overrideChanged) {
-                    updateText(cfOverride, issue, currentOverride, targetOverride, holder)
-                    issue.setCustomFieldValue(cfOverride, targetOverride ?: null)
-                }
-                return null
-            }
-            indexingService.reIndex(issue)
-            return "UPDATED"
-        } catch (Exception e) {
-            log.error("${issue.key}: PI synchronization write failed: ${e.message}", e)
-            return "FAILED"
-        }
-    }
-
-    private List<Issue> findDirectChildren(Collection<Issue> parents, ApplicationUser user) {
-        if (!parents) return []
-        Map<Long, Issue> expectedParents = parents.findAll { it?.id }
-                .collectEntries { [(it.id): it] }
-        Map<Long, Issue> children = [:]
-
-        // Keep clauses bounded while reducing traversal from one JQL per issue to one JQL per level/chunk.
-        expectedParents.values().toList().collate(100).each { List<Issue> parentChunk ->
-            String keys = parentChunk.collect { it.key }.join(",")
-            String jql = "parent in (${keys}) OR " +
-                    "cf[${numericId(CF_EPIC_LINK)}] in (${keys}) OR " +
-                    "cf[${numericId(CF_PARENT_LINK)}] in (${keys})"
-            searchAll(user, jql).each { Issue candidate ->
-                Issue actualParent = candidate ? getParent(candidate) : null
-                if (actualParent && expectedParents.containsKey(actualParent.id)) {
-                    children[candidate.id] = candidate
-                }
-            }
-        }
-        return children.values() as List<Issue>
-    }
-
-    private List<Issue> searchAll(ApplicationUser user, String jql) {
-        def parsed = searchService.parseQuery(user, jql)
-        if (!parsed.valid) throw new IllegalArgumentException("Invalid JQL '${jql}': ${parsed.errors}")
-        List<Issue> result = []
-        int start = 0
-        while (true) {
-            PagerFilter pager = new PagerFilter(SEARCH_BATCH_SIZE)
-            pager.start = start
-            def hits = searchService.searchOverrideSecurity(user, parsed.query, pager).results
-            if (!hits) break
-            hits.each { hit ->
-                Issue issue = issueManager.getIssueObject(hit.id)
-                if (issue) result << issue
-            }
-            start += hits.size()
-            if (hits.size() < SEARCH_BATCH_SIZE) break
-        }
-        return result
-    }
-
-    private Issue getParent(Issue issue) {
-        if (!issue) return null
-        if (resolvedParents.contains(issue.id)) return parentCache[issue.id]
-        Issue parent = null
-        try {
-            if (issue.parentObject) parent = issue.parentObject
-            else {
-                parent = resolveIssue(issue.getCustomFieldValue(cfEpicLink))
-                if (!parent) parent = resolveIssue(issue.getCustomFieldValue(cfParentLink))
-            }
-        } finally {
-            resolvedParents.add(issue.id)
-            parentCache[issue.id] = parent
-        }
-        return parent
-    }
-
-    private Issue resolveIssue(Object value) {
-        if (!value) return null
-        if (value instanceof Issue) return value as Issue
-        try {
-            if (value.hasProperty("key")) {
-                Issue byProperty = issueManager.getIssueObject(value.key?.toString())
-                if (byProperty) return byProperty
-            }
-        } catch (Exception ignored) { }
-        String key = value.toString()?.trim()
-        return key ? issueManager.getIssueObject(key) : null
-    }
-
-    private Option findActiveOption(Issue issue, String value) {
-        def config = cfProjectInformation.getRelevantConfig(issue)
-        if (!config) return null
-        List<Option> matches = optionsManager.getOptions(config)?.findAll {
-            normalize(it?.value?.toString()) == normalize(value)
-        }?.findAll { !isDisabledOption(it) } as List<Option>
-        if (matches?.size() > 1) {
-            throw new IllegalStateException(
-                    "${issue.key}: multiple active PI options named '${value}' exist in the field context")
-        }
-        return matches ? matches.first() : null
-    }
-
-    private String selectValue(Issue issue) {
-        def raw = issue?.getCustomFieldValue(cfProjectInformation)
-        if (!raw) return ""
-        if (raw instanceof Collection) {
-            List<Option> values = raw.findAll { it instanceof Option } as List<Option>
-            if (values.size() > 1) {
-                throw new IllegalStateException(
-                        "${issue.key}: Project Information contains ${values.size()} values; exactly one is supported")
-            }
-            return values ? values.first().value?.trim() ?: "" : ""
-        }
-        if (raw instanceof Option) return raw.value?.trim() ?: ""
-        return raw.toString()?.trim() ?: ""
-    }
-
-    private void setQueueState(MutableIssue issue, String value) {
-        String current = textValue(issue, cfPiSyncRequired)
-        inTransaction {
-            DefaultIssueChangeHolder holder = new DefaultIssueChangeHolder()
-            updateText(cfPiSyncRequired, issue, current, value ?: "", holder)
-            issue.setCustomFieldValue(cfPiSyncRequired, value ?: null)
-            return null
-        }
-        indexingService.reIndex(issue)
-    }
-
-    private void resetToTrueIfStillProcessing(Long issueId) {
-        withIssueLock(issueId) {
-            MutableIssue latest = issueManager.getIssueObject(issueId) as MutableIssue
-            if (latest && "PROCESSING".equalsIgnoreCase(
-                    textValue(latest, cfPiSyncRequired).trim())) {
-                setQueueState(latest, "true")
-            }
-            return null
-        }
-    }
-
-    private static void updateText(CustomField field, MutableIssue issue, String oldValue,
-                                   String newValue, DefaultIssueChangeHolder holder) {
-        field.updateValue(null, issue,
-                new ModifiedValue(oldValue ?: null, newValue ?: null), holder)
-    }
-
-    private void sendErrorMail(int rootsFound, int rootsCompleted, int visited,
-                               int updated, List<Map> errors) {
-        try {
-            def smtp = mailServerManager.defaultSMTPMailServer
-            if (!smtp) throw new IllegalStateException("Default SMTP mail server is not configured")
-            String rows = errors.collect { e ->
-                "<tr><td>${html(e.root)}</td><td>${html(e.issue)}</td><td>${html(e.error)}</td></tr>"
-            }.join("\n")
-            String body = """
-                <h2>Project Information incremental synchronization errors</h2>
-                <p>Roots found: ${rootsFound}<br/>
-                   Roots completed: ${rootsCompleted}<br/>
-                   Issues visited: ${visited}<br/>
-                   Issues updated: ${updated}<br/>
-                   Errors: ${errors.size()}</p>
-                <table border="1" cellpadding="5" cellspacing="0">
-                  <tr><th>Root</th><th>Issue</th><th>Error</th></tr>${rows}
-                </table>
-            """
-            Email email = new Email(ERROR_RECIPIENTS.findAll { it }.join(","))
-            email.setSubject("[PI Sync] Errors found")
-            email.setMimeType("text/html; charset=UTF-8")
-            email.setBody(body)
-            smtp.send(email)
-        } catch (Exception e) {
-            log.error("Could not send PI synchronization error email: ${e.message}", e)
-        }
-    }
-
-    private String validateConfiguration() {
-        List<String> missing = []
-        if (!cfProjectInformation) missing << CF_PROJECT_INFORMATION_N
-        if (!cfTextMirror) missing << CF_PROJECT_INFORMATION_TEXT
-        if (!cfOverride) missing << CF_PROJECT_INFORMATION_OVERRIDE_KEY
-        if (!cfPiSyncRequired) missing << CF_PI_SYNC_REQUIRED
-        if (!cfParentLink) missing << CF_PARENT_LINK
-        if (!cfEpicLink) missing << CF_EPIC_LINK
-        if (!clusterLockService) missing << "ClusterLockService"
-        if (!transactionTemplate) missing << "TransactionTemplate"
-        return missing ? "Missing custom fields: ${missing.join(', ')}" : null
-    }
-
-    private static String textValue(Issue issue, CustomField field) {
-        issue?.getCustomFieldValue(field)?.toString() ?: ""
-    }
-    private static String normalize(String value) { value == null ? "" : value.trim() }
-    private static String numericId(String id) { id.replace("customfield_", "") }
-    private static boolean isDisabledOption(Option option) {
-        try { return option?.disabled as boolean }
-        catch (Exception ignored) {
-            try { return option?.isDisabled() as boolean }
-            catch (Exception ignoredAgain) { return false }
-        }
-    }
-    private static String html(Object value) {
-        (value?.toString() ?: "").replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace('"', "&quot;")
+    private void sendErrorMail(int rootsFound, int rootsCompleted, int rootsExhausted,
+                               int visited, int updated, List<Map> errors) {
+        List<List<Object>> rows = errors.collect { [it.root, it.issue, it.error] as List<Object> }
+        String body = "<h2>Project Information incremental synchronization errors</h2>" +
+                "<p>Roots claimed: ${rootsFound}<br/>" +
+                "Roots completed: ${rootsCompleted}<br/>" +
+                "Roots given up on after ${MAX_SYNC_ATTEMPTS} attempts: ${rootsExhausted}<br/>" +
+                "Issues visited: ${visited}<br/>" +
+                "Issues updated: ${updated}<br/>" +
+                "Errors: ${errors.size()}</p>" +
+                htmlTable(["Root", "Issue", "Error"], rows, "No errors")
+        sendMail("[PI Sync] Errors found", body)
     }
 }
