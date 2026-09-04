@@ -23,7 +23,7 @@ import org.apache.log4j.Logger
 class ProjectInformationWeeklyAuditJob extends ProjectInformationConfig {
     private static final Logger log = Logger.getLogger("scriptrunner.job.project-information-weekly-audit")
 
-    private static final String[] REPORT_RECIPIENTS = ["chabrecek.anton@scheidt-bachmann.sk"]
+    private static final String[] REPORT_RECIPIENTS = ["REPLACE_WITH_EMAIL@company.example"]
     private static final String AUDIT_JQL = "cf[18600] is not EMPTY OR cf[18700] is not EMPTY OR cf[18802] is not EMPTY"
     private static final int SEARCH_BATCH_SIZE = 500
 

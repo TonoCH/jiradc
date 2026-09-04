@@ -16,6 +16,7 @@ import com.atlassian.mail.server.MailServerManager
 import org.apache.log4j.Logger
 
 /**
+ * ProjectInformationConfig
  *
  * @author chabrecek.anton
  * Created on 26. 8. 2026.
