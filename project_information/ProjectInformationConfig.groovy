@@ -81,7 +81,8 @@ class ProjectInformationConfig {
     public final IssueIndexingService indexingService = ComponentAccessor.getComponent(IssueIndexingService)
     public final MailServerManager mailServerManager = ComponentAccessor.getComponent(MailServerManager)
     public final ClusterLockService clusterLockService = ComponentAccessor.getComponent(ClusterLockService)
-    public final TransactionTemplate transactionTemplate = ComponentAccessor.getComponent(TransactionTemplate)
+    //public final TransactionTemplate transactionTemplate = ComponentAccessor.getComponent(TransactionTemplate)
+    public final TransactionTemplate transactionTemplate =  ComponentAccessor.getOSGiComponentInstanceOfType(TransactionTemplate)
 
     public final CustomField cfProjectInformation = customFieldManager.getCustomFieldObject(CF_PROJECT_INFORMATION_N)
     public final CustomField cfTextMirror = customFieldManager.getCustomFieldObject(CF_PROJECT_INFORMATION_TEXT)
@@ -370,10 +371,10 @@ class ProjectInformationConfig {
                 : "PI_SYNC_REQUIRED was set to ${QUEUE_REPAIR_NOT_POSSIBLE}."
         sendMail("[PI Sync] Manual repair required for ${issueKey}",
                 "<h2>Project Information listener failure</h2>" +
-                "<p><b>Issue:</b> ${html(issueKey)}<br/>" +
-                "<b>Operation:</b> ${html(operation)}<br/>" +
-                "<b>Reason:</b> ${html(reason)}<br/>" +
-                "<b>Status:</b> ${html(markerStatus)}</p>")
+                        "<p><b>Issue:</b> ${html(issueKey)}<br/>" +
+                        "<b>Operation:</b> ${html(operation)}<br/>" +
+                        "<b>Reason:</b> ${html(reason)}<br/>" +
+                        "<b>Status:</b> ${html(markerStatus)}</p>")
     }
 
     /** Writes PI_SYNC_REQUIRED only. An empty state clears the field. */

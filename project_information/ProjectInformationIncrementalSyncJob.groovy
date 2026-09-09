@@ -43,7 +43,7 @@ class ProjectInformationIncrementalSyncJob extends ProjectInformationConfig {
         int rootsFound = 0
         int rootsCompleted = 0
         int rootsExhausted = 0
-        int visitedCount = 0+
+        int visitedCount = 0
         int updatedCount = 0
 
         String configurationError = validateConfiguration()
