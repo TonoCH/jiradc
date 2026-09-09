@@ -297,7 +297,15 @@ class CommonHelper {
                 if (!occurrence || (occurrence != "semi-yearly" && occurrence != "yearly")) {
                     shouldCreate = true
                 } else {
-                    if (specialQuestionsDue == null || specialQuestionsDue.contains(questionIssue.key)) {
+                    //if (specialQuestionsDue == null || specialQuestionsDue.contains(questionIssue.key)) {
+                    boolean createAllSpecial = specialQuestionsDue?.contains("*ALL_SPECIAL*")
+
+                    if (createAllSpecial || specialQuestionsDue?.contains(questionIssue.key))
+                    {
+                        shouldCreate = true
+                    }
+
+                    if (specialQuestionsDue?.contains(questionIssue.key) == true) {
                         shouldCreate = true
                         String intervalForRotation = (occurrence == "semi-yearly") ? "half-year" : occurrence
                         LocalDate nextRotationDate = getNextDate(LocalDate.now(), intervalForRotation)

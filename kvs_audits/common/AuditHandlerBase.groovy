@@ -259,7 +259,8 @@ public class AuditHandlerBase {
                 audit.setAuditId();
 
                 //region For L5 info for decription and summary
-                if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_5) {
+                //if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_5) {
+                if (currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_4 || currentAuditLevel == CustomFieldsConstants.AUDIT_LEVEL_5) {
                     audit.setInfoDescriptionAndSummary(profitCenter.key, functionalArea?.key, questionUsageValue, currentAuditLevel)
                 }
                 //endregion

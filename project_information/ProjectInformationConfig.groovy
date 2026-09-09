@@ -41,22 +41,15 @@ class ProjectInformationConfig {
     // ---------------------------------------------------------------- configuration
 
     // Override these with JVM -D properties on every DC node; defaults preserve the current environment.
-    public static final String CF_PROJECT_INFORMATION_N = configured(
-            "pi.cf.projectInformation", "customfield_18600") // prod example: customfield_18702
-    public static final String CF_PROJECT_INFORMATION_TEXT = configured(
-            "pi.cf.textMirror", "customfield_18700")         // prod example: customfield_20200
-    public static final String CF_PROJECT_INFORMATION_OVERRIDE_KEY = configured(
-            "pi.cf.overrideKey", "customfield_18802")        // prod example: customfield_20201
-    public static final String CF_PI_SYNC_REQUIRED = configured(
-            "pi.cf.syncRequired", "customfield_19003")       // prod: confirm before deployment
-    public static final String CF_PARENT_LINK = configured(
-            "pi.cf.parentLink", "customfield_10301")
-    public static final String CF_EPIC_LINK = configured(
-            "pi.cf.epicLink", "customfield_10001")
+    public static final String CF_PROJECT_INFORMATION_N = configured("pi.cf.projectInformation", "customfield_18600") // prod example: customfield_18702
+    public static final String CF_PROJECT_INFORMATION_TEXT = configured("pi.cf.textMirror", "customfield_18700")         // prod example: customfield_20200
+    public static final String CF_PROJECT_INFORMATION_OVERRIDE_KEY = configured("pi.cf.overrideKey", "customfield_18802")        // prod example: customfield_20201
+    public static final String CF_PI_SYNC_REQUIRED = configured("pi.cf.syncRequired", "customfield_19003")       // prod: confirm before deployment
+    public static final String CF_PARENT_LINK = configured("pi.cf.parentLink", "customfield_10301")
+    public static final String CF_EPIC_LINK = configured("pi.cf.epicLink", "customfield_10001")
 
     public static final String JIRA_BOT = configured("pi.bot.username", "jira.bot")
-    public static final String[] ERROR_RECIPIENTS = configuredList(
-            "pi.errorRecipients", "chabrecek.anton@scheidt-bachmann.sk")
+    public static final String[] ERROR_RECIPIENTS = configuredList("pi.errorRecipients", "chabrecek.anton@scheidt-bachmann.sk")
 
     /** Empty means the whole instance. Set during a staged rollout, e.g. -Dpi.scope.projects=TEST,SBOX */
     public static final String[] SCOPE_PROJECTS = configuredList("pi.scope.projects", "")

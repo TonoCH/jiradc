@@ -165,8 +165,12 @@ class AuditLevel4Handler extends AuditHandlerBase{
         IssueService.CreateValidationResult valid = validateCreate(auditParams, "Validate Level 4 Audit failed for $usageKey")
         def result = create(valid, "Create Level 4 Audit failed for $usageKey")
 
+        /*def audit = new Audit(result.issue)
+        audit.setAuditId()
+        audit.commitIssueUpdate(EventDispatchOption.DO_NOT_DISPATCH)*/
         def audit = new Audit(result.issue)
         audit.setAuditId()
+        audit.setInfoDescriptionAndSummary(pc.key, nextFaKey, usageKey, currentAuditLevel)
         audit.commitIssueUpdate(EventDispatchOption.DO_NOT_DISPATCH)
 
         if (auditPreparationIssue.getDate_target_start()) {

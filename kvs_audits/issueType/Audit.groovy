@@ -145,16 +145,27 @@ public class Audit extends BaseIssue{
 
         String payload = "{*}PC={*}${pcKey} ${pcName}\n{*}FA={*}${faKey} ${faName}\n{*}WPC={*}${wpcStr}\n{*}Audit Level={*}${getAuditLevel()}"
 
-        if(getAuditLevel().equals(CustomFieldsConstants.AUDIT_LEVEL_4)){
-            payload = "{*}PC={*}${pcKey} ${pcName}\n{*}Audit Level={*}${getAuditLevel()}"
-            //payload += get_A_B_SubAreaString(fa)
-        }
         if(getAuditLevel().equals(CustomFieldsConstants.AUDIT_LEVEL_3)){
             payload = "{*}PC={*}${pcKey} ${pcName}\n{*}FA={*}${faKey} ${faName}\n{*}Audit Level={*}${getAuditLevel()}"
         }
+
+        /*if(getAuditLevel().equals(CustomFieldsConstants.AUDIT_LEVEL_4)){
+            payload = "{*}PC={*}${pcKey} ${pcName}\n{*}Audit Level={*}${getAuditLevel()}"
+            //payload += get_A_B_SubAreaString(fa)
+        }
+
         if(getAuditLevel().equals(CustomFieldsConstants.AUDIT_LEVEL_5)){
             // L5: leave FA key empty; expose KVS PC Sub-Area read from the Functional Area issue instead.
             payload = "{*}PC={*}${pcKey} ${pcName}\n{*}FA={*}\n{*}WPC={*}${wpcStr}\n{*}Audit Level={*}${getAuditLevel()}"
+            payload += get_A_B_SubAreaString(fa)
+        }*/
+        String auditLevel = getAuditLevel()
+
+        if (auditLevel == CustomFieldsConstants.AUDIT_LEVEL_4 ||
+                auditLevel == CustomFieldsConstants.AUDIT_LEVEL_5) {
+
+            payload = "{*}PC={*}${pcKey} ${pcName}\n" + "{*}Audit Level={*}${auditLevel}"
+
             payload += get_A_B_SubAreaString(fa)
         }
 
@@ -162,7 +173,8 @@ public class Audit extends BaseIssue{
             throw new IllegalStateException("Custom field AUDIT_DESCRIPTION_FIELD not initialised.")
 
         String current = (String) issue.getCustomFieldValue(AUDIT_DESCRIPTION_FIELD)
-        if (current?.trim() == payload) {
+        //if (current?.trim() == payload) {
+        if (current?.trim() == payload?.trim()) {
             logger.setInfoMessage("Audit description unchanged on ${issue.key}; skipping update.")
             return
         }
@@ -230,7 +242,7 @@ public class Audit extends BaseIssue{
         //return myBaseUtil.getCustomFieldValue(issue, TARGET_END_FIELD_NAME)
     }
 
-    void setInfoDescriptionAndSummary(String pcKey, String faKey, String usageKey, String auditLevel) {
+    /*void setInfoDescriptionAndSummary(String pcKey, String faKey, String usageKey, String auditLevel) {
         if (issue == null) throw new NullPointerException("setInfoDescriptionAndSummary on null Audit.")
 
         boolean isLevel5 = (auditLevel == CustomFieldsConstants.AUDIT_LEVEL_5)
@@ -258,6 +270,55 @@ public class Audit extends BaseIssue{
         }
 
         issue.setDescription(desc)
+        issue.setSummary(newSummary)
+    }*/
+
+    void setInfoDescriptionAndSummary(
+            String pcKey,
+            String faKey,
+            String usageKey,
+            String auditLevel) {
+
+        if (issue == null) {
+            throw new NullPointerException("setInfoDescriptionAndSummary on null Audit.")
+        }
+
+        boolean isLevel4Or5 =
+                auditLevel == CustomFieldsConstants.AUDIT_LEVEL_4 ||
+                        auditLevel == CustomFieldsConstants.AUDIT_LEVEL_5
+
+        def matcher = usageKey ? (usageKey =~ /_(A|B)_Level_[45]$/) : null
+        String subArea = matcher?.find() ? matcher.group(1) : ""
+
+        if (isLevel4Or5) {
+            List<String> lines = [
+                    "{*}PC={*} ${pcKey ?: "-"}",
+                    "{*}Audit Level={*} ${auditLevel ?: "-"}",
+                    "{*}Sub-Area={*} ${subArea}"
+            ]
+
+            issue.setDescription(lines.join("\n"))
+        }
+
+        String originalSummary = issue.getSummary() ?: ""
+        String infoSuffix = " - Audit ${auditLevel ?: ""} - ${pcKey ?: "-"}"
+
+        if (subArea) {
+            infoSuffix += " [${subArea}]"
+        }
+
+        if (faKey) {
+            infoSuffix += " - ${faKey}"
+        }
+
+        String newSummary = originalSummary.contains(infoSuffix)
+                ? originalSummary
+                : originalSummary + infoSuffix
+
+        if (newSummary.length() > 255) {
+            newSummary = newSummary.substring(0, 252) + "..."
+        }
+
         issue.setSummary(newSummary)
     }
 }

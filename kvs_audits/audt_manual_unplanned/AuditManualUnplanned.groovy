@@ -170,7 +170,7 @@ class AuditManualUnplanned {
                 logger.setErrorMessage("Unplanned Audit ${auditIssue.key}: failed to build Question Usage for ${level}.")
                 return
             }
-            helper.createQuestionsIssues(usage, auditIssue, currentUser?.name, null)
+            helper.createQuestionsIssues(usage, auditIssue, currentUser?.name, ["*ALL_SPECIAL*"])
             logger.setInfoMessage("Unplanned Audit ${auditIssue.key}: created questions for Question Usage '${usage}'.")
             generated++
         }
